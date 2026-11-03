@@ -1,0 +1,19 @@
+packages:
+  - spec
+  - backend
+  - frontend
+  - e2e
+
+engineStrict: true
+
+# pnpm 12 ignores save-exact in .npmrc (only auth and registry live there). This is what
+# actually pins newly added versions. .npmrc keeps save-exact=true as the recorded decision.
+saveExact: true
+
+allowBuilds:
+  "@swc/core": true
+  esbuild: true
+  # Optional native speedups and a notice script from Testcontainers' dependencies; not needed.
+  cpu-features: false
+  protobufjs: false
+  ssh2: false

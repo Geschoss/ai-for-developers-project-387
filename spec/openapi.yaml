@@ -1,0 +1,1099 @@
+openapi: 3.0.0
+info:
+  title: Календарь звонков
+  version: 0.1.0
+  description: |-
+    Календарь звонков: Гости бронируют Слоты выбранного Типа события в Календаре Владельца.
+
+    Все ошибки — RFC 9457 (`application/problem+json`) с машиночитаемым `code`.
+tags:
+  - name: Аккаунты
+  - name: Владелец
+  - name: Публичный календарь
+  - name: Администратор
+  - name: Служебное
+paths:
+  /api/admin/owners:
+    get:
+      operationId: listOwners
+      description: Все Владельцы, только чтение.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerList'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+        '403':
+          description: Сессия есть, но роль не подходит для операции.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+      tags:
+        - Администратор
+      security:
+        - SessionCookie: []
+  /api/auth/login:
+    post:
+      operationId: logIn
+      description: Вход Владельца или Администратора.
+      parameters: []
+      responses:
+        '200':
+          description: 'Ответ, который открывает сессию: cookie `sid` в `Set-Cookie`.'
+          headers:
+            Set-Cookie:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '401':
+          description: Неверная пара email и пароль. Не уточняет, что именно неверно.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/InvalidCredentials'
+      tags:
+        - Аккаунты
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+  /api/auth/logout:
+    post:
+      operationId: logOut
+      description: 'Выход: удаляет сессию и cookie. Без сессии тоже отвечает 204.'
+      parameters: []
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+          headers:
+            Set-Cookie:
+              required: true
+              schema:
+                type: string
+      tags:
+        - Аккаунты
+  /api/auth/me:
+    get:
+      operationId: getCurrentUser
+      description: Текущий пользователь и его роль.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+      tags:
+        - Аккаунты
+      security:
+        - SessionCookie: []
+  /api/auth/register:
+    post:
+      operationId: registerOwner
+      description: |-
+        Регистрация Владельца. Новый Владелец сразу залогинен; Горизонт планирования 14, Лимит бронирований 2.
+        Неизвестный часовой пояс — `validation_failed`.
+      parameters: []
+      responses:
+        '201':
+          description: 'Ответ, который открывает сессию: cookie `sid` в `Set-Cookie`.'
+          headers:
+            Set-Cookie:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentOwner'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '409':
+          description: Email или Адрес календаря уже заняты.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/RegistrationConflict'
+      tags:
+        - Аккаунты
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerRegistration'
+  /api/calendars/{calendarSlug}:
+    get:
+      operationId: getPublicCalendar
+      description: Публичная информация о календаре по Адресу календаря.
+      parameters:
+        - name: calendarSlug
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/CalendarSlug'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicCalendar'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '404':
+          description: Неизвестный Адрес календаря.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/CalendarNotFound'
+      tags:
+        - Публичный календарь
+  /api/calendars/{calendarSlug}/bookings:
+    post:
+      operationId: createBooking
+      description: |-
+        Гость бронирует Слот. Сессия не нужна; если она есть, сервер по ней отклоняет бронирование собственного
+        календаря (`own_calendar`), а на чужом календаре залогиненный пользователь бронирует как обычный Гость.
+      parameters:
+        - name: calendarSlug
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/CalendarSlug'
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingConfirmation'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '404':
+          description: Неизвестный Адрес календаря.
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/CalendarNotFound'
+                  - $ref: '#/components/schemas/EventTypeNotFound'
+        '409':
+          description: Слот занят другим Гостем или email исчерпал Лимит бронирований на этот день у этого Владельца.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/BookingConflict'
+        '422':
+          description: |-
+            Бронирование нарушает правила календаря:
+            `not_a_slot_start` — момент не совпадает с началом Слота сетки;
+            `slot_in_past` — Слот уже начался или прошёл;
+            `outside_planning_horizon` — Слот за Горизонтом планирования;
+            `own_calendar` — залогиненный Владелец бронирует собственный календарь.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/BookingRejected'
+      tags:
+        - Публичный календарь
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+      security:
+        - {}
+        - SessionCookie: []
+  /api/calendars/{calendarSlug}/slots:
+    get:
+      operationId: listSlots
+      description: |-
+        Слоты, которые начинаются в полуинтервале [`from`, `to`). Возвращаются только Слоты, доступные для бронирования
+        по времени: уже начавшиеся и лежащие за Горизонтом планирования не попадают в список.
+      parameters:
+        - name: calendarSlug
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/CalendarSlug'
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          explode: false
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          explode: false
+        - name: eventTypeId
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/Uuid'
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlotList'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '404':
+          description: Неизвестный Адрес календаря.
+          content:
+            application/problem+json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/CalendarNotFound'
+                  - $ref: '#/components/schemas/EventTypeNotFound'
+      tags:
+        - Публичный календарь
+  /api/health:
+    get:
+      operationId: getHealth
+      description: Приложение запущено и достучалось до базы. Его опрашивает health check при деплое.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+      tags:
+        - Служебное
+  /api/owner/bookings:
+    get:
+      operationId: listUpcomingBookings
+      description: 'Предстоящие Бронирования текущего Владельца: начало ещё не наступило.'
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingList'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+        '403':
+          description: Сессия есть, но роль не подходит для операции.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+      tags:
+        - Владелец
+      security:
+        - SessionCookie: []
+  /api/owner/event-types:
+    get:
+      operationId: listEventTypes
+      description: Типы событий текущего Владельца. Изменить и удалить тип нельзя.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTypeList'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+        '403':
+          description: Сессия есть, но роль не подходит для операции.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+      tags:
+        - Владелец
+      security:
+        - SessionCookie: []
+    post:
+      operationId: createEventType
+      description: Создаёт Тип события. Длительность вне шага 30 минут — `validation_failed`.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+        '403':
+          description: Сессия есть, но роль не подходит для операции.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+      tags:
+        - Владелец
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEventType'
+      security:
+        - SessionCookie: []
+  /api/owner/settings:
+    get:
+      operationId: getOwnerSettings
+      description: Настройки текущего Владельца.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerSettings'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+        '403':
+          description: Сессия есть, но роль не подходит для операции.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+      tags:
+        - Владелец
+      security:
+        - SessionCookie: []
+    put:
+      operationId: updateOwnerSettings
+      description: Сохраняет все настройки целиком. Неизвестный часовой пояс — `validation_failed`.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerSettings'
+        '400':
+          description: Запрос не прошёл проверку по схеме.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+        '401':
+          description: Нет сессии или она истекла.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Unauthenticated'
+        '403':
+          description: Сессия есть, но роль не подходит для операции.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Forbidden'
+      tags:
+        - Владелец
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerSettings'
+      security:
+        - SessionCookie: []
+components:
+  schemas:
+    Booking:
+      type: object
+      required:
+        - id
+        - guest
+        - eventTypeName
+        - startAt
+        - createdAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        guest:
+          $ref: '#/components/schemas/Guest'
+        eventTypeName:
+          allOf:
+            - $ref: '#/components/schemas/EventTypeName'
+          description: Название Типа события на момент записи.
+        startAt:
+          type: string
+          format: date-time
+          description: Начало Слота, UTC.
+        createdAt:
+          type: string
+          format: date-time
+      description: Бронирование в календаре Владельца. Видно только самому Владельцу.
+    BookingConfirmation:
+      type: object
+      required:
+        - ownerName
+        - startAt
+        - ownerTimeZone
+      properties:
+        ownerName:
+          $ref: '#/components/schemas/PersonName'
+        startAt:
+          type: string
+          format: date-time
+          description: Начало Слота, UTC.
+        ownerTimeZone:
+          allOf:
+            - $ref: '#/components/schemas/TimeZone'
+          description: 'Пояс Владельца: экран показывает время и в нём, и в поясе Гостя.'
+      description: Всё, что нужно экрану «Вы записаны».
+    BookingConflict:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - slot_taken
+            - daily_limit_reached
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 409
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Слот занят другим Гостем или email исчерпал Лимит бронирований на этот день у этого Владельца.
+    BookingList:
+      type: object
+      required:
+        - bookings
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Booking'
+          description: По возрастанию `startAt`.
+    BookingRejected:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - not_a_slot_start
+            - slot_in_past
+            - outside_planning_horizon
+            - own_calendar
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 422
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: |-
+        Бронирование нарушает правила календаря:
+        `not_a_slot_start` — момент не совпадает с началом Слота сетки;
+        `slot_in_past` — Слот уже начался или прошёл;
+        `outside_planning_horizon` — Слот за Горизонтом планирования;
+        `own_calendar` — залогиненный Владелец бронирует собственный календарь.
+    BookingRequest:
+      type: object
+      required:
+        - startAt
+        - eventTypeId
+        - guest
+      properties:
+        startAt:
+          type: string
+          format: date-time
+          description: Начало Слота, UTC. Должно совпадать с началом Слота выбранного типа.
+        eventTypeId:
+          allOf:
+            - $ref: '#/components/schemas/Uuid'
+          description: Тип события этого Календаря. Чужой id — `event_type_not_found`.
+        guest:
+          $ref: '#/components/schemas/Guest'
+    CalendarNotFound:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - calendar_not_found
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 404
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Неизвестный Адрес календаря.
+    CalendarSlug:
+      type: string
+      minLength: 3
+      maxLength: 30
+      pattern: ^[a-z0-9-]+$
+      description: 'Адрес календаря: уникальное короткое имя Владельца, из него строится публичная ссылка.'
+    Credentials:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          type: string
+          maxLength: 128
+          description: 'Минимальную длину не проверяем: на неверный пароль любой длины ответ один — `invalid_credentials`.'
+    CurrentAdmin:
+      type: object
+      required:
+        - role
+        - email
+      properties:
+        role:
+          type: string
+          enum:
+            - admin
+        email:
+          $ref: '#/components/schemas/Email'
+      description: Залогиненный Администратор. Календаря у него нет.
+    CurrentOwner:
+      type: object
+      required:
+        - role
+        - name
+        - email
+        - calendarSlug
+        - timeZone
+      properties:
+        role:
+          type: string
+          enum:
+            - owner
+        name:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          $ref: '#/components/schemas/Email'
+        calendarSlug:
+          $ref: '#/components/schemas/CalendarSlug'
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+      description: Залогиненный Владелец.
+    CurrentUser:
+      type: object
+      oneOf:
+        - $ref: '#/components/schemas/CurrentOwner'
+        - $ref: '#/components/schemas/CurrentAdmin'
+      discriminator:
+        propertyName: role
+        mapping:
+          owner: '#/components/schemas/CurrentOwner'
+          admin: '#/components/schemas/CurrentAdmin'
+    DailyBookingLimit:
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 18
+      description: 'Лимит бронирований: сколько Бронирований один email может сделать у Владельца за день.'
+    Email:
+      type: string
+      maxLength: 254
+      format: email
+    EventDuration:
+      type: number
+      enum:
+        - 30
+        - 60
+        - 90
+        - 120
+        - 150
+        - 180
+        - 210
+        - 240
+        - 270
+        - 300
+        - 330
+        - 360
+        - 390
+        - 420
+        - 450
+        - 480
+        - 510
+        - 540
+      description: |-
+        Длительность Типа события в минутах.
+        От 30 до 540 включительно, шаг 30: Слот должен целиком уложиться в 09:00–18:00.
+    EventType:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - durationMinutes
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          $ref: '#/components/schemas/EventTypeName'
+        description:
+          $ref: '#/components/schemas/EventTypeDescription'
+        durationMinutes:
+          allOf:
+            - $ref: '#/components/schemas/EventDuration'
+          description: Длительность Слота этого типа, в минутах.
+      description: Тип события, который Гость выбирает перед Слотами.
+    EventTypeDescription:
+      type: string
+      minLength: 1
+      maxLength: 1000
+      description: Описание Типа события.
+    EventTypeList:
+      type: object
+      required:
+        - eventTypes
+      properties:
+        eventTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+          description: В порядке создания.
+    EventTypeName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: Название Типа события.
+    EventTypeNotFound:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - event_type_not_found
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 404
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Id Типа события не принадлежит этому Календарю.
+    Forbidden:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - forbidden
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 403
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Сессия есть, но роль не подходит для операции.
+    Guest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          $ref: '#/components/schemas/Email'
+      description: 'Гость: бронирует без аккаунта, по имени и email.'
+    HealthStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+    InvalidCredentials:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_credentials
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 401
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Неверная пара email и пароль. Не уточняет, что именно неверно.
+    NewEventType:
+      type: object
+      required:
+        - name
+        - description
+        - durationMinutes
+      properties:
+        name:
+          $ref: '#/components/schemas/EventTypeName'
+        description:
+          $ref: '#/components/schemas/EventTypeDescription'
+        durationMinutes:
+          $ref: '#/components/schemas/EventDuration'
+      description: Новый Тип события. Id выдаёт сервер.
+    Owner:
+      type: object
+      required:
+        - name
+        - email
+        - calendarSlug
+        - timeZone
+        - registeredAt
+      properties:
+        name:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          $ref: '#/components/schemas/Email'
+        calendarSlug:
+          $ref: '#/components/schemas/CalendarSlug'
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+        registeredAt:
+          type: string
+          format: date-time
+      description: Владелец в списке Администратора.
+    OwnerList:
+      type: object
+      required:
+        - owners
+      properties:
+        owners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Owner'
+          description: По возрастанию `registeredAt`. Администратора в списке нет.
+    OwnerRegistration:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - calendarSlug
+        - timeZone
+      properties:
+        name:
+          $ref: '#/components/schemas/PersonName'
+        email:
+          allOf:
+            - $ref: '#/components/schemas/Email'
+          description: Уникален без учёта регистра.
+        password:
+          $ref: '#/components/schemas/Password'
+        calendarSlug:
+          allOf:
+            - $ref: '#/components/schemas/CalendarSlug'
+          description: Уникален.
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+    OwnerSettings:
+      type: object
+      required:
+        - timeZone
+        - planningHorizonDays
+        - dailyBookingLimit
+      properties:
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+        planningHorizonDays:
+          $ref: '#/components/schemas/PlanningHorizon'
+        dailyBookingLimit:
+          $ref: '#/components/schemas/DailyBookingLimit'
+      description: Настройки календаря Владельца. Их изменение не трогает существующие Бронирования.
+    Password:
+      type: string
+      maxLength: 128
+    PersonName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      description: Имя человека, как он его ввёл.
+    PlanningHorizon:
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 60
+      description: 'Горизонт планирования: на сколько дней вперёд, включая сегодня, можно бронировать Слоты.'
+    PublicCalendar:
+      type: object
+      required:
+        - ownerName
+        - timeZone
+        - planningHorizonDays
+        - eventTypes
+      properties:
+        ownerName:
+          $ref: '#/components/schemas/PersonName'
+        timeZone:
+          $ref: '#/components/schemas/TimeZone'
+        planningHorizonDays:
+          $ref: '#/components/schemas/PlanningHorizon'
+        eventTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventType'
+          description: В порядке создания. Пустой список — бронь не принимается.
+      description: Публичные данные календаря. Данных Гостей здесь нет.
+    RegistrationConflict:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - email_taken
+            - slug_taken
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 409
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Email или Адрес календаря уже заняты.
+    Slot:
+      type: object
+      required:
+        - startAt
+        - status
+      properties:
+        startAt:
+          type: string
+          format: date-time
+          description: Начало Слота, UTC.
+        status:
+          $ref: '#/components/schemas/SlotStatus'
+      description: 'Слот выбранного Типа события. Для Гостя он только «свободно» или «занято»: кто его занял, не раскрывается.'
+    SlotList:
+      type: object
+      required:
+        - slots
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slot'
+          description: По возрастанию `startAt`.
+    SlotStatus:
+      type: string
+      enum:
+        - free
+        - booked
+    TimeZone:
+      type: string
+      minLength: 1
+      maxLength: 64
+      pattern: ^[A-Za-z0-9_+\-/]+$
+      description: Часовой пояс из базы IANA, например `Europe/Moscow`. Существование пояса проверяет сервер.
+    Unauthenticated:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - unauthenticated
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 401
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+      description: Нет сессии или она истекла.
+    Uuid:
+      type: string
+      format: uuid
+    ValidationIssue:
+      type: object
+      required:
+        - path
+        - message
+      properties:
+        path:
+          type: string
+          description: Где нарушение, например `/body/calendarSlug`.
+        message:
+          type: string
+      description: Одно нарушение схемы в теле, пути или параметрах запроса.
+    ValidationProblem:
+      type: object
+      required:
+        - code
+        - status
+        - title
+      properties:
+        code:
+          type: string
+          enum:
+            - validation_failed
+          description: Машиночитаемый код ошибки.
+        status:
+          type: number
+          enum:
+            - 400
+          description: HTTP-статус, дублирует статус ответа (RFC 9457).
+        title:
+          type: string
+          description: Короткое описание для разработчика, не для показа пользователю.
+        detail:
+          type: string
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+      description: Запрос не прошёл проверку по схеме.
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: sid
+      description: Серверная сессия. Cookie выставляют `registerOwner` и `logIn`.
