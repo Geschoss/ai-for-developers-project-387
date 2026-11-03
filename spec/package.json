@@ -1,0 +1,33 @@
+{
+  "name": "spec",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": {
+      "types": "./api.d.ts"
+    },
+    "./openapi.yaml": "./openapi.yaml"
+  },
+  "scripts": {
+    "build": "tsp compile main.tsp && openapi-typescript openapi.yaml -o api.d.ts",
+    "check": "node scripts/check.mjs",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "5.0.6",
+    "@types/node": "^24.19.2",
+    "@types/supertest": "7.2.1",
+    "@typespec/compiler": "1.17.0",
+    "@typespec/http": "1.17.0",
+    "@typespec/openapi": "1.17.0",
+    "@typespec/openapi3": "1.17.0",
+    "cookie-parser": "^1.4.7",
+    "express": "5.3.0",
+    "express-openapi-validator": "5.6.2",
+    "openapi-typescript": "7.13.0",
+    "supertest": "7.3.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

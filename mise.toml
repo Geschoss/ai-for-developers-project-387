@@ -1,0 +1,57 @@
+# Exact tool versions for local development and CI. The Dockerfile pins the same Node (`FROM node:<version>`)
+# and reads the pnpm version from this file.
+[tools]
+node = "24.22.1"
+pnpm = "12.15.0"
+
+[tasks.lint]
+description = "oxlint, warnings are errors"
+run = "pnpm exec oxlint --deny-warnings"
+
+[tasks.format]
+description = "oxfmt check, no writes"
+run = "pnpm exec oxfmt --check"
+
+[tasks.fix]
+description = "oxlint --fix, then oxfmt"
+run = "pnpm exec oxlint --fix && pnpm exec oxfmt"
+
+[tasks.typecheck]
+description = "tsc -b across the workspace"
+run = "pnpm exec tsc -b"
+
+[tasks.knip]
+description = "Unused files, exports and dependencies"
+run = "pnpm exec knip"
+
+[tasks.depcruise]
+description = "Cycles and cross-package imports"
+run = "pnpm exec depcruise --config dependency-cruiser.config.js frontend backend spec e2e"
+
+[tasks.spec]
+description = "Committed contract artifacts match a fresh compile"
+run = "pnpm spec:check"
+
+[tasks.test]
+description = "Vitest in spec, backend, and frontend"
+run = "pnpm test"
+
+[tasks.e2e]
+description = "Playwright against the built app"
+run = "pnpm e2e"
+
+# One at a time. Parallel `depends` ran test and e2e together and the frontend suite timed out.
+[tasks.check]
+description = "lint, format, typecheck, knip, depcruise, spec, test, and e2e, in order"
+run = "mise run -j 1 lint ::: format ::: typecheck ::: knip ::: depcruise ::: spec ::: test ::: e2e"
+
+[tasks.pre-commit]
+description = "Lint and format staged files, no autofix"
+run = "bash scripts/pre-commit.sh"
+
+[tasks.commit-msg]
+description = "Conventional Commits subject and a Refs: #<n> trailer"
+run = "bash scripts/commit-message.sh commit"
+
+[hooks]
+postinstall = "mise generate git-pre-commit --write && mise generate git-pre-commit --write --hook commit-msg --task commit-msg"

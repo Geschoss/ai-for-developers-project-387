@@ -1,0 +1,28 @@
+{
+  "name": "call-calendar",
+  "version": "0.10.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter backend --filter frontend dev",
+    "build": "pnpm --filter frontend --filter backend build",
+    "start": "pnpm --filter backend start",
+    "spec:build": "pnpm --filter spec build",
+    "spec:check": "pnpm --filter spec check",
+    "typecheck": "tsc -b",
+    "test": "pnpm -r --filter '!e2e' test",
+    "e2e": "pnpm build && pnpm --filter e2e test"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "18.7.0",
+    "eslint-plugin-playwright": "2.12.1",
+    "knip": "6.43.0",
+    "oxfmt": "0.75.0",
+    "oxlint": "1.90.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}

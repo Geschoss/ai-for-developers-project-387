@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "spec" },
+    { "path": "backend" },
+    { "path": "frontend" },
+    { "path": "e2e" }
+  ]
+}

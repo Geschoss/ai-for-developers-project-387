@@ -1,0 +1,88 @@
+# Project checks. hexlet-check.yml is Hexlet's and stays untouched.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  # actions/cache saves the pnpm store from a post-step.
+  actions: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Node version in the Dockerfile matches mise.toml
+        run: |
+          set -euo pipefail
+          mise_node="$(sed -n 's/^node = "\([^"]*\)"/\1/p' mise.toml)"
+          if [[ -z "${mise_node}" ]]; then
+            echo "mise.toml has no node version" >&2
+            exit 1
+          fi
+          found=0
+          while IFS= read -r tag; do
+            found=1
+            version="${tag%%@*}"
+            version="${version%%-*}"
+            if [[ "${version}" != "${mise_node}" ]]; then
+              echo "Dockerfile has node:${tag}, mise.toml has ${mise_node}" >&2
+              exit 1
+            fi
+          done < <(sed -n 's/^FROM node:\([^[:space:]]*\).*/\1/p' Dockerfile)
+          if [[ "${found}" -eq 0 ]]; then
+            echo "Dockerfile has no FROM node:" >&2
+            exit 1
+          fi
+          echo "Node ${mise_node} matches the Dockerfile"
+
+      - name: Install the toolchain from mise.toml
+        uses: jdx/mise-action@v5
+
+      - name: Locate the pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the pnpm store
+        uses: actions/cache@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter e2e exec playwright install --with-deps chromium
+
+      - name: mise run check
+        run: mise run check
+
+  # Only a merged release PR reaches production: its squash commit on main is "chore(main): release …".
+  # The service is linked by a public repo URL, so Render gets no GitHub webhooks; the Deploy Hook starts it.
+  deploy:
+    needs: ci
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      startsWith(github.event.head_commit.message, 'chore(main): release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Deploy the release commit to Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${RENDER_DEPLOY_HOOK_URL}" ]]; then
+            echo "The RENDER_DEPLOY_HOOK_URL secret is not set" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --request POST "${RENDER_DEPLOY_HOOK_URL}&ref=${GITHUB_SHA}"

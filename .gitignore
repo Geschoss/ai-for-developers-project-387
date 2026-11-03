@@ -1,0 +1,26 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Secrets (ADMIN_EMAIL / ADMIN_PASSWORD and others): the repo is public
+.env
+.env.*
+!.env.example
+
+# Claude Code: personal settings and worktrees stay local, shared skills are committed
+.claude/settings.local.json
+.claude/worktrees/
+
+# Dependencies and build output
+node_modules/
+spec/tsp-output/
+spec/.check/
+*.tsbuildinfo
+dist/
+e2e/test-results/
+e2e/playwright-report/

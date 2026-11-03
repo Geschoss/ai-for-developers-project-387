@@ -1,0 +1,1 @@
+-- Baseline: no tables yet. It gives the migrator a journal, so migrations run on start from day one.

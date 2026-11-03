@@ -1,0 +1,274 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // All categories except nursery are errors. Nursery rules change between releases. ADR-0004.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error",
+    "restriction": "error",
+    "nursery": "off",
+  },
+  "options": {
+    // Type-aware rules via oxlint-tsgolint (TypeScript 7). Compiler diagnostics stay with tsc
+    // on TypeScript 6, because the two compilers disagree. ADR-0004.
+    "typeAware": true,
+    "typeCheck": false,
+  },
+  // `plugins` replaces Oxlint's defaults, so eslint, typescript, unicorn and oxc are listed
+  // even though they start enabled. react-hooks is not its own plugin: those rules ship in react.
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise"],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "spec/openapi.yaml",
+    "spec/api.d.ts",
+    "backend/drizzle/**",
+    ".agents/**",
+    ".claude/**",
+  ],
+  "env": {
+    "builtin": true,
+  },
+  "rules": {
+    // A file cannot both be required to default-export and forbidden to default-export.
+    "import/no-named-export": "off",
+    "import/prefer-default-export": "off",
+    // Nest controllers, Vitest and Playwright are async; banning async/await makes them unusable.
+    "oxc/no-async-await": "off",
+    // Contradicts eslint/prefer-object-spread, which requires object spread.
+    "oxc/no-rest-spread-properties": "off",
+    // prefer-top-level splits one module into two imports, which eslint/no-duplicate-imports forbids.
+    // prefer-inline rejects a type-only import from a module that has no value export.
+    "import/consistent-type-specifier-style": "off",
+    // consecutive mode fuses unrelated bindings into one statement. One binding per statement stays;
+    // oxfmt does not split a combined declaration back apart.
+    "eslint/one-var": "off",
+    // React components are PascalCase; Nest files are *.module.ts, *.controller.ts, *.filter.ts.
+    "unicorn/filename-case": "off",
+    // Import order belongs to oxfmt (sortImports). Keeping this rule would fight the formatter.
+    "eslint/sort-imports": "off",
+    // TypeScript 7 removed baseUrl, so there is no path-alias alternative to relative imports. ADR-0004.
+    "import/no-relative-parent-imports": "off",
+    // Node builtins are typed `export =`. verbatimModuleSyntax rejects the default import this rule demands.
+    "unicorn/import-style": "off",
+    // Express, Nest and Playwright pass mutable callbacks. Readonly<> does not match those parameter types.
+    "typescript/prefer-readonly-parameter-types": "off",
+    // exactOptionalPropertyTypes treats undefined as a real value, distinct from a missing property.
+    "eslint/no-undefined": "off",
+    // Nest decorators are function calls, not constructors.
+    "eslint/new-cap": [
+      "error",
+      {
+        "capIsNewExceptions": [
+          "Body",
+          "Catch",
+          "Controller",
+          "GET",
+          "Get",
+          "HttpCode",
+          "Inject",
+          "Injectable",
+          "Module",
+          "Optional",
+          "POST",
+          "Post",
+          "PUT",
+          "Put",
+          "Param",
+          "Query",
+          "Req",
+          "Res",
+        ],
+      },
+    ],
+    "typescript/no-extraneous-class": [
+      "error",
+      { "allowWithDecorator": true, "allowStaticOnly": true },
+    ],
+    // 0, 1 and -1 are indices. The other numbers are HTTP statuses and the default listen port.
+    "eslint/no-magic-numbers": [
+      "error",
+      {
+        "ignore": [
+          0, 1, -1, 200, 201, 204, 300, 301, 400, 401, 403, 404, 405, 409, 415, 422, 500, 600, 3000,
+        ],
+      },
+    ],
+    // Side-effect imports required by the framework, the CSS entry, and the DOM matcher setup.
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": [
+          "reflect-metadata",
+          "@mantine/core/styles.css",
+          "@testing-library/jest-dom/vitest",
+        ],
+      },
+    ],
+  },
+  "overrides": [
+    {
+      "files": ["frontend/src/**/*.{ts,tsx}"],
+      "excludeFiles": [
+        "frontend/src/**/*.test.{ts,tsx}",
+        "frontend/src/**/*.spec.{ts,tsx}",
+        "frontend/src/test-setup.ts",
+      ],
+      "plugins": [
+        "eslint",
+        "typescript",
+        "unicorn",
+        "oxc",
+        "import",
+        "promise",
+        "react",
+        "jsx-a11y",
+      ],
+      "env": { "browser": true },
+    },
+    {
+      "files": [
+        "frontend/src/**/*.test.{ts,tsx}",
+        "frontend/src/**/*.spec.{ts,tsx}",
+        "frontend/src/test-setup.ts",
+      ],
+      "plugins": [
+        "eslint",
+        "typescript",
+        "unicorn",
+        "oxc",
+        "import",
+        "promise",
+        "react",
+        "jsx-a11y",
+        "vitest",
+      ],
+      "env": { "browser": true },
+    },
+    {
+      "files": ["frontend/vite.config.ts"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+      "env": { "node": true },
+      "rules": {
+        // Vite loads this file as a default export.
+        "import/no-default-export": "off",
+        // vite.config.ts runs on Node.
+        "import/no-nodejs-modules": "off",
+      },
+    },
+    {
+      "files": ["backend/**/*.{ts,tsx}"],
+      "excludeFiles": ["backend/test/**", "backend/vitest.config.ts", "backend/drizzle.config.ts"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+      "env": { "node": true },
+      "rules": {
+        // constructor(private readonly …) is the Nest injection style. erasableSyntaxOnly is off for it. ADR-0004.
+        "typescript/parameter-properties": "off",
+        // Backend runs on Node.
+        "import/no-nodejs-modules": "off",
+      },
+    },
+    {
+      "files": ["backend/drizzle.config.ts"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+      "env": { "node": true },
+      "rules": {
+        // drizzle-kit loads a default export.
+        "import/no-default-export": "off",
+        // drizzle.config.ts runs on Node.
+        "import/no-nodejs-modules": "off",
+      },
+    },
+    {
+      "files": ["backend/test/**", "backend/vitest.config.ts"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+      "env": { "node": true },
+      "rules": {
+        // Backend tests run on Node.
+        "import/no-nodejs-modules": "off",
+        // Vitest loads vitest.config.ts as a default export. Test files do not default-export.
+        "import/no-default-export": "off",
+      },
+    },
+    {
+      "files": ["spec/**/*.{ts,mjs,js,cjs}"],
+      "excludeFiles": ["spec/test/**", "spec/api.d.ts"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+      "env": { "node": true },
+      "rules": {
+        // The contract package's scripts run on Node.
+        "import/no-nodejs-modules": "off",
+      },
+    },
+    {
+      "files": ["spec/test/**"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node", "vitest"],
+      "env": { "node": true },
+      "rules": {
+        // Contract tests run on Node.
+        "import/no-nodejs-modules": "off",
+      },
+    },
+    {
+      "files": ["e2e/**/*.ts"],
+      // eslint-plugin-playwright has no native port; Oxlint runs it as a JS plugin.
+      "jsPlugins": ["eslint-plugin-playwright"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+      "env": { "node": true },
+      "rules": {
+        // Playwright loads playwright.config.ts and global-setup.ts as default exports.
+        "import/no-default-export": "off",
+        // e2e runs on Node.
+        "import/no-nodejs-modules": "off",
+        "playwright/consistent-spacing-between-blocks": "error",
+        "playwright/expect-expect": "error",
+        "playwright/max-nested-describe": "error",
+        "playwright/missing-playwright-await": "error",
+        "playwright/no-conditional-expect": "error",
+        "playwright/no-conditional-in-test": "error",
+        "playwright/no-duplicate-hooks": "error",
+        "playwright/no-duplicate-slow": "error",
+        "playwright/no-element-handle": "error",
+        "playwright/no-eval": "error",
+        "playwright/no-focused-test": "error",
+        "playwright/no-force-option": "error",
+        "playwright/no-identical-title": "error",
+        "playwright/no-nested-step": "error",
+        "playwright/no-networkidle": "error",
+        "playwright/no-page-pause": "error",
+        "playwright/no-skipped-test": "error",
+        "playwright/no-standalone-expect": "error",
+        "playwright/no-unnecessary-assertions": "error",
+        "playwright/no-unsafe-references": "error",
+        "playwright/no-unused-locators": "error",
+        "playwright/no-useless-await": "error",
+        "playwright/no-useless-not": "error",
+        "playwright/no-wait-for-navigation": "error",
+        "playwright/no-wait-for-selector": "error",
+        "playwright/no-wait-for-timeout": "error",
+        "playwright/prefer-hooks-in-order": "error",
+        "playwright/prefer-hooks-on-top": "error",
+        "playwright/prefer-locator": "error",
+        "playwright/prefer-to-have-count": "error",
+        "playwright/prefer-to-have-length": "error",
+        "playwright/prefer-web-first-assertions": "error",
+        "playwright/valid-describe-callback": "error",
+        "playwright/valid-expect": "error",
+        "playwright/valid-expect-in-promise": "error",
+        "playwright/valid-test-tags": "error",
+        "playwright/valid-title": "error",
+      },
+    },
+    {
+      "files": ["dependency-cruiser.config.js", "knip.ts", "frontend/postcss.config.mjs"],
+      "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+      "env": { "node": true },
+      "rules": {
+        // dependency-cruiser, Knip and PostCSS load a default export.
+        "import/no-default-export": "off",
+      },
+    },
+  ],
+}

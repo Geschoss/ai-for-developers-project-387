@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.agents
+.claude
+docs
+e2e
+.env
+.env.*

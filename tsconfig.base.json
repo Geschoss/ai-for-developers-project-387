@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    // Shared by tsc (TypeScript 6) and oxlint-tsgolint (TypeScript 7). Do not add options
+    // TypeScript 7 removed, such as baseUrl or moduleResolution "node10". See ADR-0004.
+    "target": "es2024",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}

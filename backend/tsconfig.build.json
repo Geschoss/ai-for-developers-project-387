@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src"],
+  // The boundary fixtures exist so dependency-cruiser can be shown a violation. They are not part of the app.
+  "exclude": ["src/**/__boundary-fixtures__"]
+}
