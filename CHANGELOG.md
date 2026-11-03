@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.0...v0.10.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **identity:** start every instance when several seed the Администратор at once ([#4](https://github.com/Geschoss/ai-for-developers-project-387/issues/4)) ([6930596](https://github.com/Geschoss/ai-for-developers-project-387/commit/69305968793788e5754a7883836893f6b414d20d))
+
 ## [0.10.0](https://github.com/Geschoss/ai-for-developers-project-386/compare/v0.9.0...v0.10.0) (2026-11-02)
 
 
