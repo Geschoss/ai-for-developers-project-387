@@ -92,6 +92,8 @@ pnpm dev
 репозиторий, и обмен OIDC-токена на токен приложения. Режим `use_github_token` не нужен, поэтому `GITHUB_TOKEN`
 получает только чтение. Пример: `/oc explain this issue`.
 
+Настройки агент читает из `docs/agents/`: `issue-tracker.md` — трекер задач (GitHub issues через `gh`), `triage-labels.md` — метки триажа (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), `domain.md` — доменные документы (`GLOSSARY.md`, `docs/adr/`, `docs/spec.md`). В `.agents/skills/` ему доступны скиллы: `ask-matt`, `code-review`, `codebase-design`, `diagnosing-bugs`, `domain-modeling`, `grill-me`, `grill-with-docs`, `grilling`, `handoff`, `implement`, `implement-spec`, `improve-codebase-architecture`, `pr`, `prototype`, `research`, `retro`, `setup-matt-pocock-skills`, `tdd`, `teach`, `to-questionnaire`, `to-spec`, `to-tickets`, `triage`, `wait-what`, `wayfinder`, `wizard`, `writing-for-agents`. Все проверки запускаются командой `mise run check`.
+
 ## Использование
 
 Сервис для трёх ролей. Владелец регистрируется сам, Гость бронирует по ссылке без аккаунта, Администратор
