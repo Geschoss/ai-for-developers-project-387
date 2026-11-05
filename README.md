@@ -72,6 +72,26 @@ pnpm dev
 
 Проверки качества кода: `mise run check` (oxlint, oxfmt, tsc, knip, dependency-cruiser, сверка контракта, тесты и e2e, по очереди). По отдельности: `mise run lint`, `format`, `fix`, `typecheck`, `knip`, `depcruise`, `spec`, `test`, `e2e`. Тестам нужен запущенный Docker. Браузер Playwright ставится один раз: `pnpm --filter e2e exec playwright install chromium`.
 
+## Агент OpenCode
+
+Агент [OpenCode](https://opencode.ai/docs/github/) отвечает на команды в комментариях к issue и PR. Воркфлоу:
+`.github/workflows/opencode.yml`.
+
+| Что                  | Значение                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Событие              | `issue_comment` и `pull_request_review_comment`, только `types: [created]`                                      |
+| Команды (`mentions`) | `/oc`, `/opencode`                                                                                              |
+| Модель               | `opencode/deepseek-v4.1-flash`, ключ в секрете `OPENCODE_API_KEY`                                               |
+| Кто может вызвать    | `OWNER`, `MEMBER`, `COLLABORATOR`. Боты и комментарии из fork игнорируются                                      |
+| Права                | `contents: read`, `id-token: write`, `persist-credentials: false` у checkout                                    |
+| Тайм-аут и очередь   | 15 минут. Запуски в одном issue или PR идут по очереди, в разных параллельно                                    |
+| `share`              | Отключён в `opencode.json` (`"share": "disabled"`): репозиторий публичный, сессии на opencode.ai не публикуются |
+| Результат            | Ответ комментарием в issue или PR, при просьбе изменить код ещё ветка и PR. Прогон виден во вкладке Actions     |
+
+Используется стандартный режим: [GitHub App OpenCode](https://github.com/apps/opencode-agent), установленный на
+репозиторий, и обмен OIDC-токена на токен приложения. Режим `use_github_token` не нужен, поэтому `GITHUB_TOKEN`
+получает только чтение. Пример: `/oc explain this issue`.
+
 ## Использование
 
 Сервис для трёх ролей. Владелец регистрируется сам, Гость бронирует по ссылке без аккаунта, Администратор
