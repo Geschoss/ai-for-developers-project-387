@@ -111,6 +111,9 @@ Refs: #7
 
 The commit-msg hook and the `pr` workflow (`scripts/commit-message.sh`) enforce this.
 
+Write the PR title and body by `docs/agents/pull-requests.md` and the `pr` skill. OpenCode in GitHub Actions loads that file
+through `opencode.json`.
+
 ## Constraints
 
 - `.github/workflows/hexlet-check.yml` is auto-generated and runs Hexlet's automated checks on every push. Do not edit,
