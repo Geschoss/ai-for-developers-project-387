@@ -36,32 +36,3 @@ jobs:
         with:
           model: opencode/deepseek-v4.1-flash
           mentions: "/oc,/opencode"
-
-  # Action OpenCode называет PR сам: заголовок — пересказ ответа агента в 40 символов, тело — весь ответ.
-  # Здесь заголовок берётся из последнего коммита ветки, а `Closes #<n>` ставится первой строкой тела.
-  # Описание: docs/research/opencode-pr-title.md.
-  fix-pr:
-    needs: opencode
-    if: needs.opencode.result == 'success' && github.event_name == 'issue_comment'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Fix title and body of the agent PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          ISSUE: ${{ github.event.issue.number }}
-        run: |
-          set -euo pipefail
-          # Ветка агента: opencode/issue<N>-<время>. Если PR не создавался (агент ответил текстом), делать нечего.
-          prs=$(gh pr list --state open --json number,headRefName \
-            --jq ".[] | select(.headRefName | startswith(\"opencode/issue${ISSUE}-\")) | .number")
-          for pr in $prs; do
-            title=$(gh pr view "$pr" --json commits --jq '.commits[-1].messageHeadline')
-            body=$(gh pr view "$pr" --json body --jq .body)
-            rest=$(printf '%s\n' "$body" | grep -v -x "Closes #${ISSUE}" || true)
-            gh pr edit "$pr" --title "$title" --body "$(printf 'Closes #%s\n\n%s' "$ISSUE" "$rest")"
-          done

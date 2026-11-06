@@ -77,17 +77,17 @@ pnpm dev
 Агент [OpenCode](https://opencode.ai/docs/github/) отвечает на команды в комментариях к issue и PR. Воркфлоу:
 `.github/workflows/opencode.yml`.
 
-| Что                  | Значение                                                                                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Событие              | `issue_comment` и `pull_request_review_comment`, только `types: [created]`                                                                                                      |
-| Команды (`mentions`) | `/oc`, `/opencode`                                                                                                                                                              |
-| Модель               | `opencode/deepseek-v4.1-flash`, ключ в секрете `OPENCODE_API_KEY`                                                                                                               |
-| Кто может вызвать    | `OWNER`, `MEMBER`, `COLLABORATOR`. Боты и комментарии из fork игнорируются                                                                                                      |
-| Права                | `contents: read`, `id-token: write`, `persist-credentials: false` у checkout                                                                                                    |
-| Тайм-аут и очередь   | 15 минут. Запуски в одном issue или PR идут по очереди, в разных параллельно                                                                                                    |
-| `share`              | Отключён в `opencode.json` (`"share": "disabled"`): репозиторий публичный, сессии на opencode.ai не публикуются                                                                 |
-| Результат            | Ответ комментарием в issue или PR, при просьбе изменить код ещё ветка и PR. Прогон виден во вкладке Actions                                                                     |
-| Оформление PR        | Action называет PR сам, поэтому задание `fix-pr` после агента ставит заголовок из последнего коммита и `Closes #<n>` первой строкой тела (`pull-requests: write` только у него) |
+| Что                  | Значение                                                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Событие              | `issue_comment` и `pull_request_review_comment`, только `types: [created]`                                                                                                                                    |
+| Команды (`mentions`) | `/oc`, `/opencode`                                                                                                                                                                                            |
+| Модель               | `opencode/deepseek-v4.1-flash`, ключ в секрете `OPENCODE_API_KEY`                                                                                                                                             |
+| Кто может вызвать    | `OWNER`, `MEMBER`, `COLLABORATOR`. Боты и комментарии из fork игнорируются                                                                                                                                    |
+| Права                | `contents: read`, `id-token: write`, `persist-credentials: false` у checkout                                                                                                                                  |
+| Тайм-аут и очередь   | 15 минут. Запуски в одном issue или PR идут по очереди, в разных параллельно                                                                                                                                  |
+| `share`              | Отключён в `opencode.json` (`"share": "disabled"`): репозиторий публичный, сессии на opencode.ai не публикуются                                                                                               |
+| Результат            | Ответ комментарием в issue или PR, при просьбе изменить код ещё ветка и PR. Прогон виден во вкладке Actions                                                                                                   |
+| Оформление PR        | Action называет PR сам: заголовок выходит пересказом ответа агента, `commit-message` на нём падает. Заголовок и тело PR агента правятся вручную (`gh pr edit`). Причина: `docs/research/opencode-pr-title.md` |
 
 Используется стандартный режим: [GitHub App OpenCode](https://github.com/apps/opencode-agent), установленный на
 репозиторий, и обмен OIDC-токена на токен приложения. Режим `use_github_token` не нужен, поэтому `GITHUB_TOKEN`
