@@ -5,6 +5,11 @@ Rules for the PR an agent opens. They apply to OpenCode in GitHub Actions and to
 
 PRs are squash-merged: the PR title and body become the commit on `main`.
 
+OpenCode in GitHub Actions does not take the title from the agent: the action makes it from a 40-character summary of
+the agent's reply and puts the whole reply into the body. So the `fix-pr` job in `.github/workflows/opencode.yml`
+rewrites them after the run: the title becomes the subject of the branch's last commit, and the body starts with
+`Closes #<n>`. For the agent that means one thing: **the last commit's subject must be a valid title** (see Title).
+
 ## Title
 
 `<type>(<scope>): <sentence>` in English, in the imperative. Types: `feat`, `fix`, `perf`, `refactor`, `docs`,
