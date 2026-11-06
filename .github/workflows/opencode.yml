@@ -22,6 +22,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
+      issues: write
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -33,6 +34,8 @@ jobs:
         uses: anomalyco/opencode/github@v1.19.5
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          # gh внутри агента: публикация спецификаций и тикетов, метки. Права: issues: write.
+          GH_TOKEN: ${{ github.token }}
         with:
           model: opencode/deepseek-v4.1-flash
           mentions: "/oc,/opencode"
