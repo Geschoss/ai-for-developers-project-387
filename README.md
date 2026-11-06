@@ -95,6 +95,8 @@ pnpm dev
 
 Настройки агент читает из `docs/agents/`: трекер задач (GitHub issues через `gh`), метки триажа и доменные документы (`GLOSSARY.md`, `docs/adr/`, `docs/spec.md`). Ему доступны скиллы из `.agents/skills/`, а все проверки проекта запускаются командой `mise run check`.
 
+Как OpenCode выбирает заголовок и тело PR: [docs/research/opencode-pr-title.md](docs/research/opencode-pr-title.md).
+
 ## Использование
 
 Сервис для трёх ролей. Владелец регистрируется сам, Гость бронирует по ссылке без аккаунта, Администратор
