@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.1...v0.10.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* **opencode:** stop the agent hanging on permission prompts in CI ([#23](https://github.com/Geschoss/ai-for-developers-project-387/issues/23)) ([cfaefbc](https://github.com/Geschoss/ai-for-developers-project-387/commit/cfaefbcb363224dbf9bb0c1c753804b5f6e5b415))
+
 ## [0.10.1](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.0...v0.10.1) (2026-11-03)
 
 
