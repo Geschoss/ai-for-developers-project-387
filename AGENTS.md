@@ -75,6 +75,15 @@ Backend integration tests go through `createApp()` with supertest and check ever
 (`backend/test/contract.ts`). `spec/test/` checks the contract alone: `express-openapi-validator` over the compiled
 YAML, with stub handlers.
 
+## Before you commit
+
+Run the checks yourself while you work; do not leave them to CI. After each change that touches code or docs: `mise run
+fix`, then `mise run check` (at minimum `mise run lint`, `format`, `typecheck` and `test`). Read the failures and fix
+them before you commit. The project lint rules are strict (no `null` literals, no ternaries, function length 50, test
+statements 10), so write to them from the start. In OpenCode in GitHub Actions the toolchain is installed and these
+commands are allowed (`opencode.json`); never write "did not run the checks" there. If a command genuinely fails to
+start, say which one and why in the PR body.
+
 ## Generated files
 
 The API contract is TypeSpec in `spec/*.tsp`; every API change starts there (ADR-0001). `pnpm spec:build` generates:

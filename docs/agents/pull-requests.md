@@ -50,8 +50,8 @@ Closes #8
 `git revert <squash commit>`; check by ...
 ```
 
-Summary links the original request, the spec, the tickets and the human sign-off. Проверки give the command, the run
-link and the checked SHA, never just "tests passed". Риск names the behaviour that can break and who it affects, and
+Summary links the original request, the spec, the tickets and the human sign-off. Проверки give the command you actually ran, its
+result, the run link and the checked SHA, never just "tests passed" or "did not run". Риск names the behaviour that can break and who it affects, and
 justifies the depth of checking by the cost of a mistake, not by the number of lines. Откат says how to undo the change
 in Git and what confirms the behaviour is back; if data is touched, it says whether reverting the code is enough.
 

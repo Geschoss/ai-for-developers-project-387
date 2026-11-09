@@ -32,8 +32,10 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     outputs:
       allowed: ${{ steps.budget.outputs.allowed }}
+      same_repo: ${{ steps.kind.outputs.same_repo }}
       used: ${{ steps.budget.outputs.used }}
       limit: ${{ steps.budget.outputs.limit }}
       is_pr: ${{ steps.kind.outputs.is_pr }}
@@ -43,11 +45,24 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Is it a PR
+      - name: Is it a PR from this repository
         id: kind
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
           IS_PR: ${{ github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request != null }}
-        run: echo "is_pr=${IS_PR}" >> "${GITHUB_OUTPUT}"
+        run: |
+          set -euo pipefail
+          echo "is_pr=${IS_PR}" >> "${GITHUB_OUTPUT}"
+          # Агент исполняет скрипты проекта с секретом в окружении: код из fork ему запускать нельзя.
+          # Для issue_comment проверка head.repo в условии job невозможна, поэтому она здесь.
+          same_repo=true
+          if [[ "${IS_PR}" == "true" ]]; then
+            head_repo="$(gh api "repos/${REPO}/pulls/${NUMBER}" --jq '.head.repo.full_name // ""')"
+            if [[ "${head_repo}" != "${REPO}" ]]; then same_repo=false; fi
+          fi
+          echo "same_repo=${same_repo}" >> "${GITHUB_OUTPUT}"
 
       - name: Count the runs spent on this PR
         id: budget
@@ -65,7 +80,7 @@ jobs:
 
   opencode:
     needs: budget
-    if: needs.budget.outputs.allowed == 'true'
+    if: needs.budget.outputs.allowed == 'true' && needs.budget.outputs.same_repo == 'true'
     runs-on: ubuntu-latest
     # Тот же срок в TIMEOUT_MINUTES задания report (по нему определяется причина timeout); сверяет scripts/oc-budget.test.sh.
     timeout-minutes: 60
@@ -91,6 +106,16 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
+
+      # Агент проверяет свою работу сам (mise run fix/check, opencode.json): ему нужен тулчейн проекта.
+      - name: Install the toolchain from mise.toml
+        uses: jdx/mise-action@v5
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter e2e exec playwright install --with-deps chromium
 
       # «Re-run failed jobs» не перезапускает budget и оставляет его прошлый вердикт: пересчитываем в самой попытке.
       # Два шага, чтобы сбой подсчёта (infra) отличался от отказа по бюджету (limit_exhausted).

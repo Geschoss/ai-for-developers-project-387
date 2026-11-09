@@ -18,7 +18,17 @@
       "rg *": "allow",
       "gh issue *": "allow",
       "gh label *": "allow",
-      "gh api repos/Geschoss/ai-for-developers-project-387/*": "allow"
+      "gh api repos/Geschoss/ai-for-developers-project-387/*": "allow",
+      "mise run *": "allow",
+      "pnpm install*": "allow",
+      "pnpm test*": "allow",
+      "pnpm typecheck*": "allow",
+      "pnpm spec:*": "allow",
+      "gh pr view*": "allow",
+      "gh pr diff*": "allow",
+      "gh pr checks*": "allow",
+      "gh run view*": "allow",
+      "gh run list*": "allow"
     }
   }
 }
