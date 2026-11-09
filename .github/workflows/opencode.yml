@@ -67,7 +67,8 @@ jobs:
     needs: budget
     if: needs.budget.outputs.allowed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Тот же срок в TIMEOUT_MINUTES задания report (по нему определяется причина timeout); сверяет scripts/oc-budget.test.sh.
+    timeout-minutes: 60
     concurrency:
       group: opencode-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
@@ -149,6 +150,8 @@ jobs:
       IS_PR: ${{ needs.budget.outputs.is_pr }}
       AGENT_RESULT: ${{ needs.opencode.result }}
       BUDGET_RESULT: ${{ needs.budget.result }}
+      # Равно timeout-minutes задания opencode.
+      TIMEOUT_MINUTES: "60"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -174,9 +177,9 @@ jobs:
           else
             job="$(gh api "repos/${REPO}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest&per_page=100" \
               --jq '[.jobs[] | select(.name == "opencode")] | first // {}')"
-            reason="$(TIMEOUT_MINUTES=15 bash scripts/oc-budget.sh reason <<<"${job}")"
+            reason="$(bash scripts/oc-budget.sh reason <<<"${job}")"
             case "${reason}" in
-              timeout) detail="Агент не уложился в 15 минут." ;;
+              timeout) detail="Агент не уложился в ${TIMEOUT_MINUTES} минут." ;;
               limit_exhausted) detail="Повторная попытка отклонена: бюджет запусков этого PR (${LIMIT}) исчерпан. Модель не вызывалась. Пересмотрите подход или завершите правку сами." ;;
               infra) detail="Сбой подготовки: нет секрета модели или не запустился инструмент." ;;
               agent_failed) detail="Агент завершился с ошибкой." ;;

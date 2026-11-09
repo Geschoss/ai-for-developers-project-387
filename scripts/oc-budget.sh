@@ -4,7 +4,7 @@
 #
 #   oc-budget.sh count   REPO, PR_NUMBER, RUN_ID, RUN_ATTEMPT [, LIMIT=3, IS_PR=true] in the environment.
 #                        Prints `used=`, `limit=`, `allowed=`; appends them to $GITHUB_OUTPUT when set.
-#   oc-budget.sh reason  A job object from the Actions API on stdin [, TIMEOUT_MINUTES=15]. Prints one of
+#   oc-budget.sh reason  A job object from the Actions API on stdin [, TIMEOUT_MINUTES=60]. Prints one of
 #                        ok, timeout, limit_exhausted, infra, agent_failed, cancelled, unknown.
 #
 # The counter is the Actions history of the workflow, which the agent's token (actions: read) cannot rewrite. A run
@@ -41,7 +41,7 @@ count() {
 }
 
 reason() {
-  jq -r --arg model "${model_step}" --arg recheck "${recheck_step}" --argjson timeout "${TIMEOUT_MINUTES:-15}" '
+  jq -r --arg model "${model_step}" --arg recheck "${recheck_step}" --argjson timeout "${TIMEOUT_MINUTES:-60}" '
     def secs: fromdateiso8601;
     # A job cancelled in the queue has no start or end time.
     def ran_secs: if (.started_at // null) != null and (.completed_at // null) != null
