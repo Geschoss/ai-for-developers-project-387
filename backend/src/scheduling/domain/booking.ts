@@ -5,6 +5,7 @@ interface StoredBooking {
   guestEmail: string;
   guestName: string;
   id: string;
+  note: string | null;
   startAt: Date;
 }
 
@@ -23,6 +24,7 @@ class Booking {
   public readonly guestEmail: string;
   public readonly guestName: string;
   public readonly id: string;
+  public readonly note: string | null;
   public readonly startAt: Date;
 
   public constructor(booking: StoredBooking) {
@@ -31,6 +33,7 @@ class Booking {
     this.guestEmail = booking.guestEmail;
     this.guestName = booking.guestName;
     this.id = booking.id;
+    this.note = booking.note;
     this.startAt = booking.startAt;
   }
 }

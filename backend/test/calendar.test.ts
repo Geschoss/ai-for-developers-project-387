@@ -47,6 +47,8 @@ const halfHourMinutes = 30;
 const secondsPerMinute = 60;
 // oxlint-disable-next-line eslint/no-magic-numbers -- milliseconds in a second
 const msPerSecond = 1000;
+// oxlint-disable-next-line unicorn/no-null -- a Бронирование without a Заметка carries null
+const absentNote = null;
 
 const defaultTypeId = "type-30";
 const halfHour = EventType.restore({
@@ -122,6 +124,7 @@ const book = (attempt: BookAttempt): string | undefined => {
       eventTypeId: attempt.eventTypeId ?? defaultTypeId,
       guestEmail: email,
       guestName: "Борис",
+      note: absentNote,
       now,
       startAt: new Date(attempt.startAt),
       viewer: attempt.viewer,
@@ -142,6 +145,7 @@ const storedBooking = (startAt: string, id: string, email = "vera@example.com"):
     guestEmail: email,
     guestName: "Вера",
     id,
+    note: absentNote,
     startAt: new Date(startAt),
   });
 

@@ -49,6 +49,7 @@ const dayBookings = async (
     guestEmail: string;
     guestName: string;
     id: string;
+    note: string | null;
     startAt: Date;
   }[]
 > => {
@@ -59,6 +60,7 @@ const dayBookings = async (
       guestEmail: bookings.guestEmail,
       guestName: bookings.guestName,
       id: bookings.id,
+      note: bookings.note,
       startAt: bookings.startAt,
     })
     .from(bookings)
@@ -144,6 +146,7 @@ class DrizzleCalendarRepository implements CalendarRepository {
           guestEmail: booking.guestEmail,
           guestName: booking.guestName,
           id: booking.id,
+          note: booking.note,
           startAt: booking.startAt,
         })),
       );

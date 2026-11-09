@@ -11,11 +11,13 @@ import { CLOCK, type Clock } from "../domain/ports/clock.js";
 import { UNIT_OF_WORK, type UnitOfWork } from "../domain/ports/unit-of-work.js";
 import { SchedulingError } from "../domain/scheduling-error.js";
 import type { Viewer } from "../domain/viewer.js";
+import { normalizeNote } from "./booking-note.js";
 
 type BookingConfirmation = components["schemas"]["BookingConfirmation"];
 type BookingRequest = components["schemas"]["BookingRequest"];
 
-const booked = (calendar: Calendar, startAt: Date): BookingConfirmation => ({
+const booked = (calendar: Calendar, startAt: Date, note: string | null): BookingConfirmation => ({
+  note,
   ownerName: calendar.ownerName,
   ownerTimeZone: calendar.timeZone.name,
   startAt: startAt.toISOString(),
@@ -40,6 +42,7 @@ class BookSlot {
   ): Promise<BookingConfirmation> {
     const slug = CalendarSlug.parse(calendarSlug);
     const startAt = new Date(booking.startAt);
+    const note = normalizeNote(booking.note);
     const now = this.clock.now();
     const confirmation = await this.unitOfWork.run(async () => {
       const calendar = await this.lockedCalendar(slug, startAt);
@@ -47,12 +50,13 @@ class BookSlot {
         eventTypeId: booking.eventTypeId,
         guestEmail: booking.guest.email,
         guestName: booking.guest.name,
+        note,
         now,
         startAt,
         viewer,
       });
       await this.calendars.save(calendar);
-      return booked(calendar, startAt);
+      return booked(calendar, startAt, note);
     });
     return confirmation;
   }

@@ -236,6 +236,8 @@ export interface components {
             startAt: string;
             /** Format: date-time */
             createdAt: string;
+            /** @description Заметка к Бронированию, `null` если Гость её не оставил. */
+            note: string | null;
         };
         /** @description Всё, что нужно экрану «Вы записаны». */
         BookingConfirmation: {
@@ -247,6 +249,8 @@ export interface components {
             startAt: string;
             /** @description Пояс Владельца: экран показывает время и в нём, и в поясе Гостя. */
             ownerTimeZone: components["schemas"]["TimeZone"];
+            /** @description Заметка к Бронированию, `null` если Гость её не оставил. */
+            note: string | null;
         };
         /** @description Слот занят другим Гостем или email исчерпал Лимит бронирований на этот день у этого Владельца. */
         BookingConflict: {
@@ -299,6 +303,8 @@ export interface components {
             /** @description Тип события этого Календаря. Чужой id — `event_type_not_found`. */
             eventTypeId: components["schemas"]["Uuid"];
             guest: components["schemas"]["Guest"];
+            /** @description Необязательная Заметка к Бронированию. Обрезается по краям, пустая становится `null`, значение длиннее 500 символов после обрезки отклоняется. */
+            note?: string | null;
         };
         /** @description Неизвестный Адрес календаря. */
         CalendarNotFound: {

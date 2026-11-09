@@ -50,6 +50,8 @@ const loadBookings = async (): Promise<Booking[] | undefined> => {
   }
 };
 
+const hasNote = (note: string | null): note is string => note !== null && note !== "";
+
 const BookingCard = ({
   booking,
   timeZone,
@@ -62,6 +64,11 @@ const BookingCard = ({
     <Text c="dimmed" size="sm">
       {booking.guest.email}
     </Text>
+    {hasNote(booking.note) && (
+      <Text data-testid="booking-note" size="sm" style={{ whiteSpace: "pre-wrap" }}>
+        {booking.note}
+      </Text>
+    )}
     <Text size="sm">{booking.eventTypeName}</Text>
     <Text size="sm">{slotLine(booking.startAt, timeZone)}</Text>
     <Text size="sm">{createdLine(booking.createdAt, timeZone)}</Text>
