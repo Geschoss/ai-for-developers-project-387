@@ -13,11 +13,10 @@ import {
 } from "./api/book-slot";
 import { type DayGroup, dayKey, dayLabel, slotRange } from "./model/slot-time";
 import { SlotList } from "./SlotList";
+import { hasNote } from "./utils";
 
 // oxlint-disable-next-line eslint/no-magic-numbers -- a three-row Заметка field stays visible
 const noteRows = 3;
-
-const hasNote = (note: string | null): note is string => note !== null && note !== "";
 
 const NoteField = ({
   error,

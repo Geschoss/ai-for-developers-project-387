@@ -6,6 +6,7 @@ import { useSession } from "../app/session";
 import { api } from "../shared/api";
 import { forget } from "../shared/forget";
 import { dayKey } from "./model/slot-time";
+import { hasNote } from "./utils";
 
 type Booking = components["schemas"]["Booking"];
 
@@ -49,8 +50,6 @@ const loadBookings = async (): Promise<Booking[] | undefined> => {
     return undefined;
   }
 };
-
-const hasNote = (note: string | null): note is string => note !== null && note !== "";
 
 const BookingCard = ({
   booking,
