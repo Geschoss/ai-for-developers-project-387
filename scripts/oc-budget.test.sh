@@ -72,6 +72,11 @@ run_name="$(sed -n 's/^run-name: //p' "${here}/../.github/workflows/opencode.yml
 check "workflow run-name is quoted and starts with 'opencode #'" \
   'ok' "$([[ "${run_name}" == '"opencode #${{ '* && "${run_name}" == *' }}"' ]] && echo ok || echo "${run_name}")"
 
+# `report` recognises a timeout by the job running for about as long as the job limit: the two must stay equal.
+agent_timeout="$(awk '/^  opencode:/{f=1} f && /timeout-minutes:/{print $2; exit}' "${here}/../.github/workflows/opencode.yml")"
+report_timeout="$(sed -n 's/^      TIMEOUT_MINUTES: "\([0-9]*\)"$/\1/p' "${here}/../.github/workflows/opencode.yml")"
+check "report TIMEOUT_MINUTES equals the opencode job timeout-minutes" "${agent_timeout}" "${report_timeout}"
+
 reason() { bash "${script}" reason; }
 check "reason: success" "ok" "$(echo '{"conclusion":"success","steps":[]}' | reason)"
 check "reason: model step failed" "agent_failed" \
@@ -79,7 +84,7 @@ check "reason: model step failed" "agent_failed" \
 check "reason: setup step failed" "infra" \
   "$(echo '{"conclusion":"failure","steps":[{"name":"Check the model key","conclusion":"failure"}]}' | reason)"
 check "reason: ran to the timeout" "timeout" \
-  "$(echo '{"conclusion":"cancelled","started_at":"2026-11-09T10:00:00Z","completed_at":"2026-11-09T10:15:05Z","steps":[{"name":"Run OpenCode","conclusion":"cancelled"}]}' | reason)"
+  "$(echo '{"conclusion":"cancelled","started_at":"2026-11-09T10:00:00Z","completed_at":"2026-11-09T11:00:05Z","steps":[{"name":"Run OpenCode","conclusion":"cancelled"}]}' | reason)"
 check "reason: cancelled early by a person" "cancelled" \
   "$(echo '{"conclusion":"cancelled","started_at":"2026-11-09T10:00:00Z","completed_at":"2026-11-09T10:02:00Z","steps":[]}' | reason)"
 check "reason: cancelled in the queue has no dates" "cancelled" \
