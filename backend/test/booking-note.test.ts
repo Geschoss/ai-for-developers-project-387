@@ -311,6 +311,26 @@ describe("the Заметка limit", () => {
   });
 });
 
+describe("the raw Заметка length", () => {
+  it("accepts 500 significant characters with spaces, so the raw length is over 500", async () => {
+    const owner = await registerOwner();
+    const slot = await furthestSlot(owner);
+    const significant = "a".repeat(maximumNoteLength);
+    const rawNote = `  ${significant}  `;
+
+    expect(rawNote.length).toBeGreaterThan(maximumNoteLength);
+    const response = await book({
+      email: "boris@example.com",
+      note: rawNote,
+      owner,
+      startAt: slot.startAt,
+    });
+
+    expect(response.status).toBe(201);
+    expect(noteOfConfirmation(response)).toBe(significant);
+  });
+});
+
 describe("a taken Слот", () => {
   it("keeps only the first Гость's note when the Слот is taken", async () => {
     const owner = await registerOwner();

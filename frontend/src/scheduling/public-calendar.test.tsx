@@ -71,7 +71,7 @@ const urlOf = (input: RequestInfo | URL): string => {
 };
 
 let listed = slots;
-let booking: "created" | "horizon" | "own" | "past" | "taken" = "created";
+let booking: "created" | "horizon" | "note" | "own" | "past" | "taken" = "created";
 let viewer: "guest" | "other" | "owner" = "guest";
 
 const bothBooked = {
@@ -139,6 +139,14 @@ const bookingResponse = async (input: RequestInfo | URL): Promise<Response> => {
   const code = refusalCode();
   if (code !== undefined) {
     return rejectedBooking(code);
+  }
+  if (booking === "note") {
+    return problem(400, {
+      code: "validation_failed",
+      issues: [{ message: "Заметка слишком длинная", path: "/body/note" }],
+      status: 400,
+      title: "Bad Request",
+    });
   }
   listed = bothBooked;
   if (booking === "taken") {
@@ -297,6 +305,9 @@ describe("the zone banner", () => {
 });
 
 const noteLabel = "О чём хотите поговорить?";
+// oxlint-disable-next-line eslint/no-magic-numbers -- one character over the 500-character Заметка limit
+const overlongNoteLength = 501;
+const overlongNote = "a".repeat(overlongNoteLength);
 
 const bookFirstSlot = (time: RegExp, note?: string): void => {
   fireEvent.click(screen.getByRole("button", { name: time }));
@@ -361,6 +372,18 @@ describe("refusing a booking", () => {
 
     expect(await screen.findByText("Этот слот уже занят")).toBeInTheDocument();
     expect(screen.getByLabelText(noteLabel, { exact: false })).toHaveValue("Не потеряй меня");
+  });
+
+  it("keeps the overlong Заметка and shows the length error when validation fails", async () => {
+    booking = "note";
+    renderAt("/u/anna");
+    fireEvent.click(await screen.findByRole("button", { name: /^2 ноября/u }));
+    bookFirstSlot(/09:00–09:30/u, overlongNote);
+
+    expect(
+      await screen.findByText("Заметка к Бронированию — не длиннее 500 символов"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(noteLabel, { exact: false })).toHaveValue(overlongNote);
   });
 
   it("says the Слот was taken and refreshes the day", async () => {
