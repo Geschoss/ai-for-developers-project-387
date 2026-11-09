@@ -63,6 +63,15 @@ check "PR without runs" \
 check "limit is configurable" \
   "used=2 limit=2 allowed=false" "$(PR_NUMBER=5 RUN_ID=104 RUN_ATTEMPT=1 LIMIT=2 count)"
 
+check "plain issue has no limit" \
+  "used=0 limit=none allowed=true" "$(IS_PR=false PR_NUMBER=5 RUN_ID=104 RUN_ATTEMPT=1 count)"
+
+# The counter finds runs by display_title. In YAML a bare " #" starts a comment, so the run-name must be quoted
+# and have exactly the form the script searches for ("opencode #<number>").
+run_name="$(sed -n 's/^run-name: //p' "${here}/../.github/workflows/opencode.yml")"
+check "workflow run-name is quoted and starts with 'opencode #'" \
+  'ok' "$([[ "${run_name}" == '"opencode #${{ '* && "${run_name}" == *' }}"' ]] && echo ok || echo "${run_name}")"
+
 reason() { bash "${script}" reason; }
 check "reason: success" "ok" "$(echo '{"conclusion":"success","steps":[]}' | reason)"
 check "reason: model step failed" "agent_failed" \

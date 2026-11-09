@@ -3,7 +3,8 @@
 name: opencode
 
 # По номеру в имени запуска счётчик связывает запуски с PR (scripts/oc-budget.sh). Имя от комментария не зависит.
-run-name: opencode #${{ github.event.issue.number || github.event.pull_request.number }}
+# В кавычках: без них YAML считает " #..." комментарием и имя запуска превращается в «opencode».
+run-name: "opencode #${{ github.event.issue.number || github.event.pull_request.number }}"
 
 on:
   issue_comment:
@@ -60,11 +61,6 @@ jobs:
           IS_PR: ${{ steps.kind.outputs.is_pr }}
         run: |
           set -euo pipefail
-          # Лимит действует на PR. Обычный issue без лимита: из него запускается implement-spec.
-          if [[ "${IS_PR}" != "true" ]]; then
-            printf 'used=0\nlimit=0\nallowed=true\n' >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
           bash scripts/oc-budget.sh count
 
   opencode:
@@ -107,7 +103,8 @@ jobs:
   # Итог без модели: отказ по бюджету и причина сбоя. Запускается и после падения, и после тайм-аута агента.
   report:
     needs: [budget, opencode]
-    if: always() && needs.budget.result == 'success'
+    # Сбой самого budget тоже виден человеку; пропущенный budget (чужой комментарий) молчит.
+    if: always() && (needs.budget.result == 'success' || needs.budget.result == 'failure')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -125,6 +122,7 @@ jobs:
       LIMIT: ${{ needs.budget.outputs.limit }}
       IS_PR: ${{ needs.budget.outputs.is_pr }}
       AGENT_RESULT: ${{ needs.opencode.result }}
+      BUDGET_RESULT: ${{ needs.budget.result }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -139,7 +137,10 @@ jobs:
             sha="$(gh pr view "${NUMBER}" --repo "${REPO}" --json headRefOid --jq .headRefOid)"
           fi
 
-          if [[ "${ALLOWED}" != "true" ]]; then
+          if [[ "${BUDGET_RESULT}" != "success" ]]; then
+            reason="infra"
+            detail="Не удалось проверить бюджет запусков, модель не вызывалась. Смотрите лог."
+          elif [[ "${ALLOWED}" != "true" ]]; then
             reason="limit_exhausted"
             detail="Допущено запусков агента на этот PR: ${USED} из ${LIMIT}. Модель не вызывалась. Пересмотрите подход или завершите правку сами."
           elif [[ "${AGENT_RESULT}" == "success" || "${AGENT_RESULT}" == "skipped" ]]; then

@@ -2,7 +2,7 @@
 # Budget of agent runs per PR and the reason a run stopped. Used by .github/workflows/opencode.yml, README.md,
 # «Предел запусков на PR». Tests: scripts/oc-budget.test.sh.
 #
-#   oc-budget.sh count   REPO, PR_NUMBER, RUN_ID, RUN_ATTEMPT [, LIMIT=3] in the environment.
+#   oc-budget.sh count   REPO, PR_NUMBER, RUN_ID, RUN_ATTEMPT [, LIMIT=3, IS_PR=true] in the environment.
 #                        Prints `used=`, `limit=`, `allowed=`; appends them to $GITHUB_OUTPUT when set.
 #   oc-budget.sh reason  A job object from the Actions API on stdin [, TIMEOUT_MINUTES=15]. Prints one of
 #                        ok, timeout, infra, agent_failed, cancelled, unknown.
@@ -16,6 +16,11 @@ agent_job="opencode"
 model_step="Run OpenCode"
 
 count() {
+  # The limit is per PR. A plain issue has none: implement-spec runs from one.
+  if [[ "${IS_PR:-true}" != "true" ]]; then
+    printf 'used=0\nlimit=none\nallowed=true\n' | tee -a "${GITHUB_OUTPUT:-/dev/null}"
+    return
+  fi
   : "${REPO:?}" "${PR_NUMBER:?}" "${RUN_ID:?}" "${RUN_ATTEMPT:?}"
   local limit="${LIMIT:-3}" title="opencode #${PR_NUMBER}" used=0 id n
   local ids

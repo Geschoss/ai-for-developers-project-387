@@ -70,7 +70,7 @@ pnpm dev
 3. Перезапустите Cursor.
 4. Проверьте подключение: запросите список сервисов Render.
 
-Проверки качества кода: `mise run check` (oxlint, oxfmt, tsc, knip, dependency-cruiser, сверка контракта, тесты и e2e, по очереди). По отдельности: `mise run lint`, `format`, `fix`, `typecheck`, `knip`, `depcruise`, `spec`, `test`, `e2e`. Тестам нужен запущенный Docker. Браузер Playwright ставится один раз: `pnpm --filter e2e exec playwright install chromium`.
+Проверки качества кода: `mise run check` (oxlint, oxfmt, tsc, knip, dependency-cruiser, сверка контракта, shell-тесты бюджета агента `scripts`, тесты и e2e, по очереди). По отдельности: `mise run lint`, `format`, `fix`, `typecheck`, `knip`, `depcruise`, `spec`, `scripts`, `test`, `e2e`. Тестам нужен запущенный Docker. Браузер Playwright ставится один раз: `pnpm --filter e2e exec playwright install chromium`.
 
 ## Агент OpenCode
 
