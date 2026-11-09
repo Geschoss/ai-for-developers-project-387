@@ -198,6 +198,7 @@ describe("POST /api/calendars/:slug/bookings", () => {
 
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
+      note: null,
       ownerName: "Анна",
       ownerTimeZone: "Europe/Moscow",
       startAt: slot.startAt,

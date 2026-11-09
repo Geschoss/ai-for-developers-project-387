@@ -70,6 +70,9 @@ model Booking {
   startAt: utcDateTime;
 
   createdAt: utcDateTime;
+
+  /** Заметка к Бронированию, `null` если Гость её не оставил. */
+  note: string | null;
 }
 
 model BookingList {

@@ -28,6 +28,7 @@ const upcoming = {
       eventTypeName: "Звонок",
       guest: { email: "boris@example.com", name: "Борис" },
       id: "11111111-1111-4111-8111-111111111111",
+      note: "Вопрос про проект\nи контекст",
       startAt: "2026-03-28T06:00:00.000Z",
     },
     {
@@ -35,6 +36,7 @@ const upcoming = {
       eventTypeName: "Созвон",
       guest: { email: "vera@example.com", name: "Вера" },
       id: "22222222-2222-4222-8222-222222222222",
+      note: null,
       startAt: "2026-03-28T06:30:00.000Z",
     },
   ],
@@ -107,5 +109,15 @@ describe("предстоящие события", () => {
     });
     expect(boris.compareDocumentPosition(vera)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.queryByText("Предстоящих событий нет")).not.toBeInTheDocument();
+  });
+
+  it("shows a non-empty note under the email, keeping line breaks", async () => {
+    vi.stubGlobal("fetch", backend(upcoming));
+    await openEvents();
+
+    const note = await screen.findByTestId("booking-note");
+    expect(note.textContent).toBe("Вопрос про проект\nи контекст");
+    expect(note).toHaveStyle({ whiteSpace: "pre-wrap" });
+    expect(screen.getAllByTestId("booking-note")).toHaveLength(1);
   });
 });

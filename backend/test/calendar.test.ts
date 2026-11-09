@@ -122,6 +122,7 @@ const book = (attempt: BookAttempt): string | undefined => {
       eventTypeId: attempt.eventTypeId ?? defaultTypeId,
       guestEmail: email,
       guestName: "Борис",
+      note: null,
       now,
       startAt: new Date(attempt.startAt),
       viewer: attempt.viewer,
@@ -142,6 +143,7 @@ const storedBooking = (startAt: string, id: string, email = "vera@example.com"):
     guestEmail: email,
     guestName: "Вера",
     id,
+    note: null,
     startAt: new Date(startAt),
   });
 

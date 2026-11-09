@@ -3,6 +3,7 @@ interface FieldErrors {
   dailyBookingLimit?: string;
   email?: string;
   name?: string;
+  note?: string;
   password?: string;
   planningHorizonDays?: string;
   timeZone?: string;
@@ -18,6 +19,7 @@ const messageByPath: Record<keyof FieldErrors, string> = {
   dailyBookingLimit: "Лимит бронирований — целое число от 1 до 18",
   email: "Укажите корректный email",
   name: "Укажите имя",
+  note: "Заметка к Бронированию — не длиннее 500 символов",
   password: "Пароль должен быть не короче 8 символов",
   planningHorizonDays: "Горизонт планирования — целое число от 1 до 60",
   timeZone: "Выберите часовой пояс из списка",
@@ -44,6 +46,7 @@ const fieldByPath: Record<string, keyof FieldErrors | undefined> = {
   "/body/guest/email": "email",
   "/body/guest/name": "name",
   "/body/name": "name",
+  "/body/note": "note",
   "/body/password": "password",
   "/body/planningHorizonDays": "planningHorizonDays",
   "/body/timeZone": "timeZone",

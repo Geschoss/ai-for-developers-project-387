@@ -62,6 +62,11 @@ const BookingCard = ({
     <Text c="dimmed" size="sm">
       {booking.guest.email}
     </Text>
+    {booking.note !== null && booking.note !== "" ? (
+      <Text data-testid="booking-note" size="sm" style={{ whiteSpace: "pre-wrap" }}>
+        {booking.note}
+      </Text>
+    ) : undefined}
     <Text size="sm">{booking.eventTypeName}</Text>
     <Text size="sm">{slotLine(booking.startAt, timeZone)}</Text>
     <Text size="sm">{createdLine(booking.createdAt, timeZone)}</Text>

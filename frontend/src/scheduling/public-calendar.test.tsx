@@ -87,6 +87,22 @@ const confirmation = {
   startAt: "2026-11-02T06:00:00.000Z",
 };
 
+const noteOf = async (input: RequestInfo | URL): Promise<string | null> => {
+  if (!(input instanceof Request)) {
+    return null;
+  }
+  const body: unknown = await input.clone().json();
+  if (typeof body !== "object" || body === null || !("note" in body)) {
+    return null;
+  }
+  const value = (body as Record<string, unknown>)["note"];
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+};
+
 const methodOf = (input: RequestInfo | URL): string => {
   if (input instanceof Request) {
     return input.method;
@@ -107,7 +123,7 @@ const refusalByOutcome: Record<string, string | undefined> = {
 
 const refusalCode = (): string | undefined => refusalByOutcome[booking];
 
-const bookingResponse = (): Response => {
+const bookingResponse = async (input: RequestInfo | URL): Promise<Response> => {
   const code = refusalCode();
   if (code !== undefined) {
     return rejectedBooking(code);
@@ -116,7 +132,7 @@ const bookingResponse = (): Response => {
   if (booking === "taken") {
     return problem(409, { code: "slot_taken", status: 409, title: "Conflict" });
   }
-  return json(201, confirmation);
+  return json(201, { ...confirmation, note: await noteOf(input) });
 };
 
 const viewerSlug = (): string => {
@@ -149,13 +165,13 @@ const calendarResponse = (url: string): Response => {
   return problem(404, { code: "not_found", status: 404, title: "Not Found" });
 };
 
-const fetchCalendar = (input: RequestInfo | URL): Response => {
+const fetchCalendar = async (input: RequestInfo | URL): Promise<Response> => {
   const url = urlOf(input);
   if (url.includes("/api/auth/me")) {
     return currentUser();
   }
   if (methodOf(input) === "POST" && url.includes("/bookings")) {
-    return bookingResponse();
+    return bookingResponse(input);
   }
   if (url.includes("/slots")) {
     return json(200, listed);
@@ -174,10 +190,7 @@ const resetGuest = (): void => {
   listed = slots;
   booking = "created";
   viewer = "guest";
-  vi.stubGlobal("fetch", async (input: RequestInfo | URL): Promise<Response> => {
-    const response = await Promise.resolve(fetchCalendar(input));
-    return response;
-  });
+  vi.stubGlobal("fetch", fetchCalendar);
 };
 
 describe("public calendar", () => {
@@ -270,7 +283,9 @@ describe("the zone banner", () => {
   });
 });
 
-const bookFirstSlot = (time: RegExp): void => {
+const noteLabel = "О чём хотите поговорить?";
+
+const bookFirstSlot = (time: RegExp, note?: string): void => {
   fireEvent.click(screen.getByRole("button", { name: time }));
   fireEvent.change(screen.getByLabelText("Имя", { exact: false }), {
     target: { value: "Борис" },
@@ -278,6 +293,11 @@ const bookFirstSlot = (time: RegExp): void => {
   fireEvent.change(screen.getByLabelText("Email", { exact: false }), {
     target: { value: "boris@example.com" },
   });
+  if (note !== undefined) {
+    fireEvent.change(screen.getByLabelText(noteLabel, { exact: false }), {
+      target: { value: note },
+    });
+  }
   fireEvent.click(screen.getByRole("button", { name: "Забронировать" }));
 };
 
@@ -297,7 +317,29 @@ describe("booking a Слот", () => {
     expect(screen.getByText("2 ноября")).toBeInTheDocument();
     expect(screen.getByText("Ваше время: 01:00–01:30")).toBeInTheDocument();
     expect(screen.getByText("Время владельца (Europe/Moscow): 09:00–09:30")).toBeInTheDocument();
+    expect(screen.queryByTestId("booking-note")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^2 ноября, свободно 0$/u })).toBeInTheDocument();
+  });
+
+  it("shows the Заметка к Бронированию on «Вы записаны» with its line breaks", async () => {
+    renderAt("/u/anna");
+    fireEvent.click(await screen.findByRole("button", { name: /^2 ноября/u }));
+    bookFirstSlot(/09:00–09:30/u, "Вопрос про проект\nи контекст");
+
+    expect(await screen.findByRole("heading", { name: "Вы записаны" })).toBeInTheDocument();
+    const note = screen.getByTestId("booking-note");
+    expect(note.textContent).toBe("Вопрос про проект\nи контекст");
+    expect(note).toHaveStyle({ whiteSpace: "pre-wrap" });
+  });
+
+  it("keeps the Заметка in the textarea when the Слот was taken", async () => {
+    booking = "taken";
+    renderAt("/u/anna");
+    fireEvent.click(await screen.findByRole("button", { name: /^2 ноября/u }));
+    bookFirstSlot(/09:00–09:30/u, "Не потеряй меня");
+
+    expect(await screen.findByText("Этот слот уже занят")).toBeInTheDocument();
+    expect(screen.getByLabelText(noteLabel, { exact: false })).toHaveValue("Не потеряй меня");
   });
 
   it("says the Слот was taken and refreshes the day", async () => {
