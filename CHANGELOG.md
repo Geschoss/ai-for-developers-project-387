@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.4](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.3...v0.10.4) (2026-11-09)
+
+
+### Bug Fixes
+
+* **opencode:** let the report job comment on a PR ([#44](https://github.com/Geschoss/ai-for-developers-project-387/issues/44)) ([b6ba042](https://github.com/Geschoss/ai-for-developers-project-387/commit/b6ba0426f6546951f9a8d913707f890c6cf3479c))
+
 ## [0.10.3](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.2...v0.10.3) (2026-11-09)
 
 
