@@ -94,11 +94,11 @@ jobs:
           Если спецификация или согласование по ссылкам недоступны или изменение выходит за согласованный объём, отметь этот пробел.
           Ответ: только текст ревью в Markdown, без вступления.
           EOF
-          opencode run \
+          # --file принимает список: текст запроса идёт первым, иначе он станет именем файла.
+          opencode run "$(cat "${RUNNER_TEMP}/prompt.md")" \
             --model opencode/deepseek-v4.1-flash \
             --format json \
             --file "${RUNNER_TEMP}/REVIEW.md" \
-            "$(cat "${RUNNER_TEMP}/prompt.md")" \
             > "${RUNNER_TEMP}/events.jsonl" || {
               echo "reason=agent_failed: opencode run завершился с ошибкой" > "${RUNNER_TEMP}/failure"
               exit 1
