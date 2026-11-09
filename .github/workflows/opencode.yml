@@ -111,11 +111,9 @@ jobs:
       - name: Install the toolchain from mise.toml
         uses: jdx/mise-action@v5
 
-      # postinstall из mise.toml ставит git-хуки проекта. Коммит и название PR делает сам action (название выходит
-      # пересказом ответа агента), commit-msg его отклонял: см. docs/research/opencode-pr-title.md. Формат проверяет `pr`.
-      - name: Turn off the project git hooks
-        run: git config --local core.hooksPath /dev/null
-
+      # postinstall из mise.toml ставит git-хуки проекта (pre-commit, commit-msg): агент коммитит сам и получает отказ
+      # на плохом сообщении или на линтере сразу. Хвост, оставленный без коммита, action закоммитит под своим названием
+      # (пересказ ответа агента), и commit-msg его отклонит: см. AGENTS.md, «Before you commit».
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
