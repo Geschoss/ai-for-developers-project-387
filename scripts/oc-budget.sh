@@ -5,7 +5,7 @@
 #   oc-budget.sh count   REPO, PR_NUMBER, RUN_ID, RUN_ATTEMPT [, LIMIT=3, IS_PR=true] in the environment.
 #                        Prints `used=`, `limit=`, `allowed=`; appends them to $GITHUB_OUTPUT when set.
 #   oc-budget.sh reason  A job object from the Actions API on stdin [, TIMEOUT_MINUTES=15]. Prints one of
-#                        ok, timeout, infra, agent_failed, cancelled, unknown.
+#                        ok, timeout, limit_exhausted, infra, agent_failed, cancelled, unknown.
 #
 # The counter is the Actions history of the workflow, which the agent's token (actions: read) cannot rewrite. A run
 # is tied to its PR by `run-name: opencode #<number>`. An attempt is spent when the job `opencode` was not skipped,
@@ -14,6 +14,7 @@ set -euo pipefail
 
 agent_job="opencode"
 model_step="Run OpenCode"
+recheck_step="Recheck the budget"
 
 count() {
   # The limit is per PR. A plain issue has none: implement-spec runs from one.
@@ -40,13 +41,19 @@ count() {
 }
 
 reason() {
-  jq -r --arg model "${model_step}" --argjson timeout "${TIMEOUT_MINUTES:-15}" '
+  jq -r --arg model "${model_step}" --arg recheck "${recheck_step}" --argjson timeout "${TIMEOUT_MINUTES:-15}" '
     def secs: fromdateiso8601;
+    # A job cancelled in the queue has no start or end time.
+    def ran_secs: if (.started_at // null) != null and (.completed_at // null) != null
+      then ((.completed_at | secs) - (.started_at | secs)) else 0 end;
     (.steps // []) as $steps
     | ([$steps[] | select(.conclusion == "failure")] | first) as $failed
     | if .conclusion == "success" then "ok"
-      elif .conclusion == "cancelled" and ((.completed_at | secs) - (.started_at | secs)) >= ($timeout * 60 - 60) then "timeout"
-      elif $failed != null then (if $failed.name == $model then "agent_failed" else "infra" end)
+      elif .conclusion == "cancelled" and ran_secs >= ($timeout * 60 - 60) then "timeout"
+      elif $failed != null then (
+        if $failed.name == $model then "agent_failed"
+        elif $failed.name == $recheck then "limit_exhausted"
+        else "infra" end)
       elif .conclusion == "cancelled" then "cancelled"
       else "unknown" end'
 }

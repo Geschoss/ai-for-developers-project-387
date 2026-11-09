@@ -73,6 +73,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
+      actions: read
       issues: write
       id-token: write
     steps:
@@ -90,6 +91,22 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # «Re-run failed jobs» не перезапускает budget и оставляет его прошлый вердикт: пересчитываем в самой попытке.
+      - name: Recheck the budget
+        if: github.run_attempt > 1 && needs.budget.outputs.is_pr == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          LIMIT: ${{ env.OC_LIMIT }}
+        run: |
+          set -euo pipefail
+          out="$(bash scripts/oc-budget.sh count)"
+          echo "${out}"
+          grep -qx 'allowed=true' <<<"${out}"
+
       - name: Run OpenCode
         uses: anomalyco/opencode/github@v1.19.5
         env:
@@ -104,7 +121,7 @@ jobs:
   report:
     needs: [budget, opencode]
     # Сбой самого budget тоже виден человеку; пропущенный budget (чужой комментарий) молчит.
-    if: always() && (needs.budget.result == 'success' || needs.budget.result == 'failure')
+    if: always() && contains(fromJSON('["success","failure","cancelled"]'), needs.budget.result)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -151,6 +168,7 @@ jobs:
             reason="$(TIMEOUT_MINUTES=15 bash scripts/oc-budget.sh reason <<<"${job}")"
             case "${reason}" in
               timeout) detail="Агент не уложился в 15 минут." ;;
+              limit_exhausted) detail="Повторная попытка отклонена: бюджет запусков этого PR (${LIMIT}) исчерпан. Модель не вызывалась. Пересмотрите подход или завершите правку сами." ;;
               infra) detail="Сбой подготовки: нет секрета модели или не запустился инструмент." ;;
               agent_failed) detail="Агент завершился с ошибкой." ;;
               *) reason="unknown"; detail="Причина не определена, проверьте лог." ;;

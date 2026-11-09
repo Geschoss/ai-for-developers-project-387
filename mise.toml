@@ -3,6 +3,8 @@
 [tools]
 node = "24.22.1"
 pnpm = "12.15.0"
+# scripts/oc-budget.sh parses the Actions API with jq.
+jq = "1.8.1"
 
 [tasks.lint]
 description = "oxlint, warnings are errors"

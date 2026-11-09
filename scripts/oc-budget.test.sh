@@ -82,6 +82,10 @@ check "reason: ran to the timeout" "timeout" \
   "$(echo '{"conclusion":"cancelled","started_at":"2026-11-09T10:00:00Z","completed_at":"2026-11-09T10:15:05Z","steps":[{"name":"Run OpenCode","conclusion":"cancelled"}]}' | reason)"
 check "reason: cancelled early by a person" "cancelled" \
   "$(echo '{"conclusion":"cancelled","started_at":"2026-11-09T10:00:00Z","completed_at":"2026-11-09T10:02:00Z","steps":[]}' | reason)"
+check "reason: cancelled in the queue has no dates" "cancelled" \
+  "$(echo '{"conclusion":"cancelled","started_at":null,"completed_at":null,"steps":[]}' | reason)"
+check "reason: Re-run refused by the recheck" "limit_exhausted" \
+  "$(echo '{"conclusion":"failure","steps":[{"name":"Recheck the budget","conclusion":"failure"}]}' | reason)"
 check "reason: nothing recognisable" "unknown" "$(echo '{"conclusion":null,"steps":[]}' | reason)"
 
 if ((failures > 0)); then
