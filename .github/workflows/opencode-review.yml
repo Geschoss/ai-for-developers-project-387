@@ -73,12 +73,17 @@ jobs:
             fi
           done
 
+      - name: Use the reviewer permissions as the project config
+        run: |
+          set -euo pipefail
+          # OPENCODE_CONFIG перекрывается проектным opencode.json, поэтому политика ревьюера занимает его место
+          # в рабочем каталоге (это основная ветка, в git ничего не попадает).
+          cp .github/opencode-review.json opencode.json
+
       - name: Review the PR
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GH_TOKEN: ${{ github.token }}
-          # Добавляет к opencode.json только чтение PR и запрет записи.
-          OPENCODE_CONFIG: ${{ github.workspace }}/.github/opencode-review.json
         run: |
           set -euo pipefail
           if [[ -z "${OPENCODE_API_KEY}" ]]; then
