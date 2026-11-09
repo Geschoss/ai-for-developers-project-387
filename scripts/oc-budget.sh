@@ -49,7 +49,8 @@ reason() {
     (.steps // []) as $steps
     | ([$steps[] | select(.conclusion == "failure")] | first) as $failed
     | if .conclusion == "success" then "ok"
-      elif .conclusion == "cancelled" and ran_secs >= ($timeout * 60 - 60) then "timeout"
+      elif (.conclusion == "cancelled" or .conclusion == "timed_out") and ran_secs >= ($timeout * 60 - 60) then "timeout"
+      elif .conclusion == "timed_out" then "timeout"
       elif $failed != null then (
         if $failed.name == $model then "agent_failed"
         elif $failed.name == $recheck then "limit_exhausted"

@@ -92,7 +92,9 @@ jobs:
           persist-credentials: false
 
       # «Re-run failed jobs» не перезапускает budget и оставляет его прошлый вердикт: пересчитываем в самой попытке.
-      - name: Recheck the budget
+      # Два шага, чтобы сбой подсчёта (infra) отличался от отказа по бюджету (limit_exhausted).
+      - name: Recount the budget
+        id: recount
         if: github.run_attempt > 1 && needs.budget.outputs.is_pr == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,11 +103,17 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           LIMIT: ${{ env.OC_LIMIT }}
+        run: bash scripts/oc-budget.sh count
+
+      - name: Recheck the budget
+        if: steps.recount.outcome == 'success'
+        env:
+          ALLOWED: ${{ steps.recount.outputs.allowed }}
         run: |
-          set -euo pipefail
-          out="$(bash scripts/oc-budget.sh count)"
-          echo "${out}"
-          grep -qx 'allowed=true' <<<"${out}"
+          if [[ "${ALLOWED}" != "true" ]]; then
+            echo "Budget exhausted on a re-run" >&2
+            exit 1
+          fi
 
       - name: Run OpenCode
         uses: anomalyco/opencode/github@v1.19.5

@@ -86,6 +86,10 @@ check "reason: cancelled in the queue has no dates" "cancelled" \
   "$(echo '{"conclusion":"cancelled","started_at":null,"completed_at":null,"steps":[]}' | reason)"
 check "reason: Re-run refused by the recheck" "limit_exhausted" \
   "$(echo '{"conclusion":"failure","steps":[{"name":"Recheck the budget","conclusion":"failure"}]}' | reason)"
+check "reason: GitHub reports the timeout as timed_out" "timeout" \
+  "$(echo '{"conclusion":"timed_out","steps":[]}' | reason)"
+check "reason: a failed recount is infra, not an exhausted budget" "infra" \
+  "$(echo '{"conclusion":"failure","steps":[{"name":"Recount the budget","conclusion":"failure"}]}' | reason)"
 check "reason: nothing recognisable" "unknown" "$(echo '{"conclusion":null,"steps":[]}' | reason)"
 
 if ((failures > 0)); then
