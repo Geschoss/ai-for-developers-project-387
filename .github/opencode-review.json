@@ -4,6 +4,7 @@
     "edit": "deny",
     "webfetch": "deny",
     "bash": {
+      "git show*": "allow",
       "gh pr view*": "allow",
       "gh pr diff*": "allow",
       "gh pr checks*": "allow",
