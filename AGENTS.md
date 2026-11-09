@@ -84,6 +84,10 @@ statements 10), so write to them from the start. In OpenCode in GitHub Actions t
 commands are allowed (`opencode.json`); never write "did not run the checks" there. If a command genuinely fails to
 start, say which one and why in the PR body.
 
+Commit your work yourself, in the format of **Commits** below (`<type>(<scope>): <sentence>` and a `Refs: #<n>` trailer).
+When you finish, `git status` must show nothing uncommitted: otherwise the OpenCode action makes its own commit, titled
+with a short summary of your reply, which is not our format. The git hooks (pre-commit, commit-msg) are on in CI: if a commit is rejected, fix the cause and commit again.
+
 ## Generated files
 
 The API contract is TypeSpec in `spec/*.tsp`; every API change starts there (ADR-0001). `pnpm spec:build` generates:

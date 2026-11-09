@@ -28,7 +28,9 @@
       "gh pr diff*": "allow",
       "gh pr checks*": "allow",
       "gh run view*": "allow",
-      "gh run list*": "allow"
+      "gh run list*": "allow",
+      "git add*": "allow",
+      "git commit*": "allow"
     }
   }
 }
