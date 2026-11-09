@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": "deny",
+    "webfetch": "deny",
+    "bash": {
+      "gh pr view*": "allow",
+      "gh pr diff*": "allow",
+      "gh pr checks*": "allow",
+      "gh run view*": "allow",
+      "gh run list*": "allow",
+      "gh pr comment*": "deny",
+      "gh pr edit*": "deny",
+      "gh pr review*": "deny",
+      "gh issue comment*": "deny",
+      "gh issue edit*": "deny",
+      "gh issue close*": "deny",
+      "gh issue create*": "deny",
+      "gh label*": "deny"
+    }
+  }
+}

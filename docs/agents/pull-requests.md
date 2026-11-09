@@ -22,7 +22,8 @@ docs(readme): describe agent settings and skills
 ## Body
 
 1. The first line is `Closes #<n>`, the issue the work belongs to. Nothing before it: no greeting, no "Готово".
-2. Then the sections of the `pr` skill (`.agents/skills/pr`): Summary, Evidence, Merge Danger. Keep them short.
+2. Then the sections of `.github/pull_request_template.md`: Summary (with the `pr` skill's diagram or diff), Проверки,
+   Риск, Откат. Keep them short.
 
 ```markdown
 Closes #8
@@ -31,17 +32,28 @@ Closes #8
 
 ...
 
-## Evidence
+## Проверки
 
-- **Before:** ...
-  **After:** ...
+- **SHA:** `<head SHA>`
+- `mise run check`: <link to the CI run>
+- **Было:** <red run>
+  **Стало:** <green run>
 
-## Merge Danger
+## Риск
 
 **Door:** two-way
 
 **Blast Radius:** ...
+
+## Откат
+
+`git revert <squash commit>`; check by ...
 ```
+
+Summary links the original request, the spec, the tickets and the human sign-off. Проверки give the command, the run
+link and the checked SHA, never just "tests passed". Риск names the behaviour that can break and who it affects, and
+justifies the depth of checking by the cost of a mistake, not by the number of lines. Откат says how to undo the change
+in Git and what confirms the behaviour is back; if data is touched, it says whether reverting the code is enough.
 
 Do not paste the Actions run link or a "committed <sha>" line into the title; the run link may go last in the body.
 
