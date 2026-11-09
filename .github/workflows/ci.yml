@@ -65,6 +65,93 @@ jobs:
       - name: mise run check
         run: mise run check
 
+  # Работающая версия PR: приложение собирается из точного head PR (а не из временного merge-коммита), основной и
+  # соседний сценарии проходят в браузере с принудительным trace. Артефакт хранит SHA и результат. Секрета модели нет.
+  verify-head:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Здесь исполняется код PR, кэша pnpm нет: хватает чтения (верхнеуровневый actions: write нужен только заданию ci).
+    permissions:
+      contents: read
+    env:
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Record the checked-out commit
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          echo "git rev-parse HEAD = ${actual}"
+          if [[ "${actual}" != "${HEAD_SHA}" ]]; then
+            echo "Checked out ${actual}, the PR head is ${HEAD_SHA}" >&2
+            exit 1
+          fi
+          mkdir -p verification
+          echo "${actual}" > verification/sha.txt
+
+      - name: Install the toolchain from mise.toml
+        uses: jdx/mise-action@v5
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter e2e exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
+      # Основной: Бронирование Гостя видно Владельцу. Соседний: второй Гость не занимает тот же Слот.
+      - name: Main and neighbouring scenarios in the browser
+        id: e2e
+        env:
+          E2E_TRACE: "on"
+          E2E_REPORT: ${{ github.workspace }}/verification/playwright-report.json
+        run: pnpm --filter e2e test events.spec.ts booking.spec.ts
+
+      - name: Write the verdict
+        if: always()
+        env:
+          OUTCOME: ${{ steps.e2e.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          mkdir -p verification
+          # pass только если выполнились оба сценария: не пропущены, не переименованы, не отфильтрованы.
+          expected=0; skipped=0; unexpected=0
+          if [[ -s verification/playwright-report.json ]]; then
+            expected="$(jq '.stats.expected' verification/playwright-report.json)"
+            skipped="$(jq '.stats.skipped' verification/playwright-report.json)"
+            unexpected="$(jq '.stats.unexpected + .stats.flaky' verification/playwright-report.json)"
+          fi
+          result="fail"
+          if [[ "${OUTCOME}" == "success" && "${expected}" == "2" && "${skipped}" == "0" && "${unexpected}" == "0" ]]; then
+            result="pass"
+          fi
+          sha="$(cat verification/sha.txt 2>/dev/null || echo unknown)"
+          jq -n --arg sha "${sha}" --arg head "${HEAD_SHA}" --arg result "${result}" \
+            --arg run "${RUN_URL}" --argjson pr "${PR_NUMBER}" --argjson expected "${expected}" --argjson skipped "${skipped}" \
+            '{sha: $sha, prHead: $head, pr: $pr, result: $result, run: $run, expected: $expected, skipped: $skipped,
+              scenarios: ["events.spec.ts (main)", "booking.spec.ts (neighbour)"]}' > verification/verdict.json
+          cat verification/verdict.json
+
+      - name: Keep the evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: head-verification-${{ github.event.pull_request.head.sha }}
+          path: |
+            verification/
+            e2e/test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
   # Only a merged release PR reaches production: its squash commit on main is "chore(main): release …".
   # The service is linked by a public repo URL, so Render gets no GitHub webhooks; the Deploy Hook starts it.
   deploy:
