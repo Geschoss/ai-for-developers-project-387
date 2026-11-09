@@ -71,6 +71,9 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Здесь исполняется код PR, кэша pnpm нет: хватает чтения (верхнеуровневый actions: write нужен только заданию ci).
+    permissions:
+      contents: read
     env:
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
