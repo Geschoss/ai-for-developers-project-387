@@ -136,7 +136,8 @@ jobs:
       contents: read
       actions: read
       issues: write
-      pull-requests: read
+      # write: комментарий к PR (в том числе через REST issues) иначе даёт 403. Модели и секрета в задании нет.
+      pull-requests: write
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
@@ -192,5 +193,4 @@ jobs:
             echo
             echo "${detail}"
           } > comment.md
-          # REST, а не `gh issue comment`: тот ходит в GraphQL addComment, которому на PR нужен pull-requests: write.
-          gh api --method POST "repos/${REPO}/issues/${NUMBER}/comments" --field body=@comment.md > /dev/null
+          gh issue comment "${NUMBER}" --repo "${REPO}" --body-file comment.md
