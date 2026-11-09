@@ -120,12 +120,21 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p verification
+          # pass только если выполнились оба сценария: не пропущены, не переименованы, не отфильтрованы.
+          expected=0; skipped=0; unexpected=0
+          if [[ -s verification/playwright-report.json ]]; then
+            expected="$(jq '.stats.expected' verification/playwright-report.json)"
+            skipped="$(jq '.stats.skipped' verification/playwright-report.json)"
+            unexpected="$(jq '.stats.unexpected + .stats.flaky' verification/playwright-report.json)"
+          fi
           result="fail"
-          if [[ "${OUTCOME}" == "success" ]]; then result="pass"; fi
+          if [[ "${OUTCOME}" == "success" && "${expected}" == "2" && "${skipped}" == "0" && "${unexpected}" == "0" ]]; then
+            result="pass"
+          fi
           sha="$(cat verification/sha.txt 2>/dev/null || echo unknown)"
           jq -n --arg sha "${sha}" --arg head "${HEAD_SHA}" --arg result "${result}" \
-            --arg run "${RUN_URL}" --argjson pr "${PR_NUMBER}" \
-            '{sha: $sha, prHead: $head, pr: $pr, result: $result, run: $run,
+            --arg run "${RUN_URL}" --argjson pr "${PR_NUMBER}" --argjson expected "${expected}" --argjson skipped "${skipped}" \
+            '{sha: $sha, prHead: $head, pr: $pr, result: $result, run: $run, expected: $expected, skipped: $skipped,
               scenarios: ["events.spec.ts (main)", "booking.spec.ts (neighbour)"]}' > verification/verdict.json
           cat verification/verdict.json
 

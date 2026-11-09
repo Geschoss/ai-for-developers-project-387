@@ -174,8 +174,8 @@ pnpm dev
 задании нет. Для успешных прогонов trace включён явно: `E2E_TRACE=on` в `e2e/playwright.config.ts`.
 
 Артефакт Actions `head-verification-<sha>` содержит `sha.txt` (результат `git rev-parse HEAD`), `verdict.json`
-(`pass` или `fail`, SHA, ссылка на прогон), отчёт Playwright и trace каждого теста (`e2e/test-results/**/trace.zip`,
-открывается `pnpm exec playwright show-trace`). Перед мержем:
+(`pass` только если выполнены оба сценария, `expected: 2`, `skipped: 0`; иначе `fail`; SHA, ссылка на прогон), отчёт Playwright и trace каждого теста (`e2e/test-results/**/trace.zip`,
+открывается `pnpm --filter e2e exec playwright show-trace <путь к trace.zip>`), скриншоты каждой страницы теста (`test-finished-*.png`). Перед мержем:
 
 1. Откройте артефакт в прогоне `ci` этого PR и сверьте `sha.txt` с текущим head PR (`gh pr view <n> --json headRefOid`).
 2. Убедитесь, что `verdict.json` содержит `"result": "pass"`, и откройте trace.
