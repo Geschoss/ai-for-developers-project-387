@@ -1,5 +1,9 @@
-# Агент OpenCode отвечает на /oc и /opencode в комментариях к issue и PR. Описание: README.md, «Агент OpenCode».
+# Агент OpenCode отвечает на /oc и /opencode в комментариях к issue и PR. Описание: README.md, «Агент OpenCode»
+# и «Предел запусков на PR».
 name: opencode
+
+# По номеру в имени запуска счётчик связывает запуски с PR (scripts/oc-budget.sh). Имя от комментария не зависит.
+run-name: opencode #${{ github.event.issue.number || github.event.pull_request.number }}
 
 on:
   issue_comment:
@@ -7,14 +11,65 @@ on:
   pull_request_review_comment:
     types: [created]
 
+permissions: {}
+
+env:
+  # Допущенных запусков агента на один PR.
+  OC_LIMIT: "3"
+
 jobs:
-  opencode:
+  # Бюджет проверяется кодом до вызова модели. Модели и секрета здесь нет.
+  budget:
     # Команду даёт доверенный участник; боты и fork (у них нет секретов) пропускаются.
     if: |
       (contains(github.event.comment.body, '/oc') || contains(github.event.comment.body, '/opencode')) &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
       github.event.comment.user.type != 'Bot' &&
       (github.event_name == 'issue_comment' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      allowed: ${{ steps.budget.outputs.allowed }}
+      used: ${{ steps.budget.outputs.used }}
+      limit: ${{ steps.budget.outputs.limit }}
+      is_pr: ${{ steps.kind.outputs.is_pr }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Is it a PR
+        id: kind
+        env:
+          IS_PR: ${{ github.event_name == 'pull_request_review_comment' || github.event.issue.pull_request != null }}
+        run: echo "is_pr=${IS_PR}" >> "${GITHUB_OUTPUT}"
+
+      - name: Count the runs spent on this PR
+        id: budget
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          LIMIT: ${{ env.OC_LIMIT }}
+          IS_PR: ${{ steps.kind.outputs.is_pr }}
+        run: |
+          set -euo pipefail
+          # Лимит действует на PR. Обычный issue без лимита: из него запускается implement-spec.
+          if [[ "${IS_PR}" != "true" ]]; then
+            printf 'used=0\nlimit=0\nallowed=true\n' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          bash scripts/oc-budget.sh count
+
+  opencode:
+    needs: budget
+    if: needs.budget.outputs.allowed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:
@@ -25,6 +80,15 @@ jobs:
       issues: write
       id-token: write
     steps:
+      - name: Check the model key
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          if [[ -z "${OPENCODE_API_KEY}" ]]; then
+            echo "OPENCODE_API_KEY is not set" >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
@@ -39,3 +103,66 @@ jobs:
         with:
           model: opencode/deepseek-v4.1-flash
           mentions: "/oc,/opencode"
+
+  # Итог без модели: отказ по бюджету и причина сбоя. Запускается и после падения, и после тайм-аута агента.
+  report:
+    needs: [budget, opencode]
+    if: always() && needs.budget.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      ALLOWED: ${{ needs.budget.outputs.allowed }}
+      USED: ${{ needs.budget.outputs.used }}
+      LIMIT: ${{ needs.budget.outputs.limit }}
+      IS_PR: ${{ needs.budget.outputs.is_pr }}
+      AGENT_RESULT: ${{ needs.opencode.result }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Say why a person is needed
+        run: |
+          set -euo pipefail
+          sha=""
+          if [[ "${IS_PR}" == "true" ]]; then
+            sha="$(gh pr view "${NUMBER}" --repo "${REPO}" --json headRefOid --jq .headRefOid)"
+          fi
+
+          if [[ "${ALLOWED}" != "true" ]]; then
+            reason="limit_exhausted"
+            detail="Допущено запусков агента на этот PR: ${USED} из ${LIMIT}. Модель не вызывалась. Пересмотрите подход или завершите правку сами."
+          elif [[ "${AGENT_RESULT}" == "success" || "${AGENT_RESULT}" == "skipped" ]]; then
+            exit 0
+          else
+            job="$(gh api "repos/${REPO}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest&per_page=100" \
+              --jq '[.jobs[] | select(.name == "opencode")] | first // {}')"
+            reason="$(TIMEOUT_MINUTES=15 bash scripts/oc-budget.sh reason <<<"${job}")"
+            case "${reason}" in
+              timeout) detail="Агент не уложился в 15 минут." ;;
+              infra) detail="Сбой подготовки: нет секрета модели или не запустился инструмент." ;;
+              agent_failed) detail="Агент завершился с ошибкой." ;;
+              *) reason="unknown"; detail="Причина не определена, проверьте лог." ;;
+            esac
+          fi
+
+          {
+            echo "## Агент OpenCode: нужен человек"
+            echo
+            echo "- **Причина:** \`${reason}\`"
+            [[ -n "${sha}" ]] && echo "- **Последний SHA:** \`${sha}\`"
+            echo "- **Лог:** ${RUN_URL}"
+            echo
+            echo "${detail}"
+          } > comment.md
+          gh issue comment "${NUMBER}" --repo "${REPO}" --body-file comment.md

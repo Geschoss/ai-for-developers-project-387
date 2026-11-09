@@ -32,6 +32,10 @@ run = "pnpm exec depcruise --config dependency-cruiser.config.js frontend backen
 description = "Committed contract artifacts match a fresh compile"
 run = "pnpm spec:check"
 
+[tasks.scripts]
+description = "Shell tests of the agent run budget (scripts/oc-budget.sh)"
+run = "bash scripts/oc-budget.test.sh"
+
 [tasks.test]
 description = "Vitest in spec, backend, and frontend"
 run = "pnpm test"
@@ -42,8 +46,8 @@ run = "pnpm e2e"
 
 # One at a time. Parallel `depends` ran test and e2e together and the frontend suite timed out.
 [tasks.check]
-description = "lint, format, typecheck, knip, depcruise, spec, test, and e2e, in order"
-run = "mise run -j 1 lint ::: format ::: typecheck ::: knip ::: depcruise ::: spec ::: test ::: e2e"
+description = "lint, format, typecheck, knip, depcruise, spec, scripts, test, and e2e, in order"
+run = "mise run -j 1 lint ::: format ::: typecheck ::: knip ::: depcruise ::: spec ::: scripts ::: test ::: e2e"
 
 [tasks.pre-commit]
 description = "Lint and format staged files, no autofix"
