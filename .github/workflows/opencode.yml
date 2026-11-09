@@ -192,4 +192,5 @@ jobs:
             echo
             echo "${detail}"
           } > comment.md
-          gh issue comment "${NUMBER}" --repo "${REPO}" --body-file comment.md
+          # REST, а не `gh issue comment`: тот ходит в GraphQL addComment, которому на PR нужен pull-requests: write.
+          gh api --method POST "repos/${REPO}/issues/${NUMBER}/comments" --field body=@comment.md > /dev/null
