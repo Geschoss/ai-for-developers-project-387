@@ -110,7 +110,7 @@ jobs:
           opencode run "$(cat "${RUNNER_TEMP}/prompt.md")" \
             --model opencode/deepseek-v4.1-flash \
             --format json \
-            --file "${RUNNER_TEMP}/REVIEW.md" \
+            --file REVIEW.md \
             > "${RUNNER_TEMP}/events.jsonl" || {
               echo "reason=agent_failed: opencode run завершился с ошибкой" > "${RUNNER_TEMP}/failure"
               exit 1
