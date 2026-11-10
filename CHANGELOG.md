@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.4...v0.11.0) (2026-11-10)
+
+
+### Features
+
+* **booking:** let a Гость leave a note for the Владелец ([#55](https://github.com/Geschoss/ai-for-developers-project-387/issues/55)) ([dee23b2](https://github.com/Geschoss/ai-for-developers-project-387/commit/dee23b22ab441b8f3916abc988f0dfbc9acdd66e))
+
 ## [0.10.4](https://github.com/Geschoss/ai-for-developers-project-387/compare/v0.10.3...v0.10.4) (2026-11-09)
 
 
