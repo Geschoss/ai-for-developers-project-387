@@ -1,4 +1,5 @@
-import { Button, Card, Stack, Text, TextInput, Title } from "@mantine/core";
+/* oxlint-disable eslint/max-lines -- the day, the Гость form and the «Вы записаны» screen stay together */
+import { Button, Card, Stack, Text, Textarea, TextInput, Title } from "@mantine/core";
 import { type ReactElement, type SubmitEvent, useState } from "react";
 
 import { forget } from "../shared/forget";
@@ -12,12 +13,39 @@ import {
 } from "./api/book-slot";
 import { type DayGroup, dayKey, dayLabel, slotRange } from "./model/slot-time";
 import { SlotList } from "./SlotList";
+import { hasNote } from "./utils";
+
+// oxlint-disable-next-line eslint/no-magic-numbers -- a three-row Заметка field stays visible
+const noteRows = 3;
+
+const NoteField = ({
+  error,
+  onChange,
+  value,
+}: {
+  error: string | undefined;
+  onChange: (value: string) => void;
+  value: string;
+}): ReactElement => (
+  <Textarea
+    label="О чём хотите поговорить?"
+    description="Необязательно, до 500 символов"
+    name="note"
+    rows={noteRows}
+    value={value}
+    error={error}
+    onChange={(event) => {
+      onChange(event.currentTarget.value);
+    }}
+  />
+);
 
 const GuestForm = ({
   draft,
   fields,
   onEmail,
   onName,
+  onNote,
   onSubmit,
   pending,
 }: {
@@ -25,6 +53,7 @@ const GuestForm = ({
   fields: FieldErrors;
   onEmail: (value: string) => void;
   onName: (value: string) => void;
+  onNote: (value: string) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   pending: boolean;
 }): ReactElement => (
@@ -51,6 +80,7 @@ const GuestForm = ({
           onEmail(event.currentTarget.value);
         }}
       />
+      <NoteField value={draft.note} error={fields.note} onChange={onNote} />
       <Button type="submit" loading={pending}>
         Забронировать
       </Button>
@@ -76,6 +106,11 @@ const BookedNotice = ({
       Время владельца ({confirmation.ownerTimeZone}):{" "}
       {slotRange(confirmation.startAt, confirmation.ownerTimeZone, durationMinutes)}
     </Text>
+    {hasNote(confirmation.note) && (
+      <Text data-testid="booking-note" style={{ whiteSpace: "pre-wrap" }}>
+        {confirmation.note}
+      </Text>
+    )}
   </Stack>
 );
 
@@ -149,6 +184,7 @@ const GuestFields = ({
   fields,
   onEmail,
   onName,
+  onNote,
   onSubmit,
   pending,
   shown,
@@ -157,6 +193,7 @@ const GuestFields = ({
   fields: FieldErrors;
   onEmail: (value: string) => void;
   onName: (value: string) => void;
+  onNote: (value: string) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   pending: boolean;
   shown: boolean;
@@ -171,6 +208,7 @@ const GuestFields = ({
       pending={pending}
       onEmail={onEmail}
       onName={onName}
+      onNote={onNote}
       onSubmit={onSubmit}
     />
   );
@@ -188,6 +226,7 @@ interface DayView {
   onEmail: (value: string) => void;
   ownCalendar: boolean;
   onName: (value: string) => void;
+  onNote: (value: string) => void;
   onSelect: (startAt: string) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   pending: boolean;
@@ -222,16 +261,20 @@ const DayBody = (props: DayView): ReactElement => {
         draft={props.draft}
         fields={props.fields}
         pending={props.pending}
-        shown={slotIsFree(props.group, props.slotStart) && !props.ownCalendar}
+        shown={
+          !props.ownCalendar &&
+          (slotIsFree(props.group, props.slotStart) || props.formError !== undefined)
+        }
         onEmail={props.onEmail}
         onName={props.onName}
+        onNote={props.onNote}
         onSubmit={props.onSubmit}
       />
     </>
   );
 };
 
-const emptyDraft = (): GuestDraft => ({ email: "", name: "" });
+const emptyDraft = (): GuestDraft => ({ email: "", name: "", note: "" });
 
 interface PanelProps {
   calendarSlug: string;
@@ -283,6 +326,9 @@ const BookingPanel = (props: PanelProps): ReactElement => {
         }}
         onName={(name) => {
           setDraft({ ...draft, name });
+        }}
+        onNote={(note) => {
+          setDraft({ ...draft, note });
         }}
         onSelect={setSlotStart}
         onSubmit={(event) => {

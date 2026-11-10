@@ -104,9 +104,17 @@ const bookings = pgTable(
     guestEmail: text("guest_email").notNull(),
     guestName: text("guest_name").notNull(),
     id: uuid("id").primaryKey(),
+    note: text("note"),
     startAt: timestamp("start_at", { mode: "date", withTimezone: true }).notNull(),
   },
-  (table) => [check("bookings_end_after_start", sql`${table.endAt} > ${table.startAt}`)],
+  (table) => [
+    check("bookings_end_after_start", sql`${table.endAt} > ${table.startAt}`),
+    // oxlint-disable-next-line eslint/no-magic-numbers -- spec: a Заметка к Бронированию is 1..500 characters or null
+    check(
+      "bookings_note_length",
+      sql`${table.note} is null or char_length(${table.note}) between 1 and 500`,
+    ),
+  ],
 );
 
 export { bookings, calendars, eventTypes, sessions, users };

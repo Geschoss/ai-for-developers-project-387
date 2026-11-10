@@ -17,6 +17,7 @@ interface BookingRow {
   guestEmail: string;
   guestName: string;
   id: string;
+  note: string | null;
   startAt: Date;
 }
 
@@ -25,6 +26,7 @@ const bookingFrom = (row: BookingRow): Booking => ({
   eventTypeName: row.eventTypeName,
   guest: { email: row.guestEmail, name: row.guestName },
   id: row.id,
+  note: row.note,
   startAt: row.startAt.toISOString(),
 });
 
@@ -52,6 +54,7 @@ class OwnerService {
         guestEmail: bookings.guestEmail,
         guestName: bookings.guestName,
         id: bookings.id,
+        note: bookings.note,
         startAt: bookings.startAt,
       })
       .from(bookings)

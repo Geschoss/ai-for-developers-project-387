@@ -8,6 +8,7 @@ type BookingConfirmation = components["schemas"]["BookingConfirmation"];
 interface GuestDraft {
   email: string;
   name: string;
+  note: string;
 }
 
 type BookingOutcome =
@@ -26,7 +27,12 @@ const bookSlot = async (booking: {
   startAt: string;
 }): Promise<BookingOutcome> => {
   const result = await api.POST("/api/calendars/{calendarSlug}/bookings", {
-    body: { eventTypeId: booking.eventTypeId, guest: booking.guest, startAt: booking.startAt },
+    body: {
+      eventTypeId: booking.eventTypeId,
+      guest: { email: booking.guest.email, name: booking.guest.name },
+      note: booking.guest.note,
+      startAt: booking.startAt,
+    },
     params: { path: { calendarSlug: booking.calendarSlug } },
   });
   if (result.data !== undefined) {

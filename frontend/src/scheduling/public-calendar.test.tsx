@@ -71,7 +71,7 @@ const urlOf = (input: RequestInfo | URL): string => {
 };
 
 let listed = slots;
-let booking: "created" | "horizon" | "own" | "past" | "taken" = "created";
+let booking: "created" | "horizon" | "note" | "own" | "past" | "taken" = "created";
 let viewer: "guest" | "other" | "owner" = "guest";
 
 const bothBooked = {
@@ -86,6 +86,34 @@ const confirmation = {
   ownerTimeZone: "Europe/Moscow",
   startAt: "2026-11-02T06:00:00.000Z",
 };
+
+// oxlint-disable-next-line unicorn/no-null -- the contract expresses an absent Заметка к Бронированию as null
+const absentNote = null;
+
+const noteValue = async (input: RequestInfo | URL): Promise<unknown> => {
+  if (!(input instanceof Request)) {
+    return absentNote;
+  }
+  const body: unknown = await input.clone().json();
+  if (typeof body !== "object" || body === null || !("note" in body)) {
+    return absentNote;
+  }
+  return (body as Record<string, unknown>)["note"];
+};
+
+const noteText = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return absentNote;
+  }
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return absentNote;
+  }
+  return trimmed;
+};
+
+const noteOf = async (input: RequestInfo | URL): Promise<string | null> =>
+  noteText(await noteValue(input));
 
 const methodOf = (input: RequestInfo | URL): string => {
   if (input instanceof Request) {
@@ -107,16 +135,24 @@ const refusalByOutcome: Record<string, string | undefined> = {
 
 const refusalCode = (): string | undefined => refusalByOutcome[booking];
 
-const bookingResponse = (): Response => {
+const bookingResponse = async (input: RequestInfo | URL): Promise<Response> => {
   const code = refusalCode();
   if (code !== undefined) {
     return rejectedBooking(code);
+  }
+  if (booking === "note") {
+    return problem(400, {
+      code: "validation_failed",
+      issues: [{ message: "Заметка слишком длинная", path: "/body/note" }],
+      status: 400,
+      title: "Bad Request",
+    });
   }
   listed = bothBooked;
   if (booking === "taken") {
     return problem(409, { code: "slot_taken", status: 409, title: "Conflict" });
   }
-  return json(201, confirmation);
+  return json(201, { ...confirmation, note: await noteOf(input) });
 };
 
 const viewerSlug = (): string => {
@@ -149,13 +185,14 @@ const calendarResponse = (url: string): Response => {
   return problem(404, { code: "not_found", status: 404, title: "Not Found" });
 };
 
-const fetchCalendar = (input: RequestInfo | URL): Response => {
+const fetchCalendar = async (input: RequestInfo | URL): Promise<Response> => {
   const url = urlOf(input);
   if (url.includes("/api/auth/me")) {
     return currentUser();
   }
   if (methodOf(input) === "POST" && url.includes("/bookings")) {
-    return bookingResponse();
+    const response = await bookingResponse(input);
+    return response;
   }
   if (url.includes("/slots")) {
     return json(200, listed);
@@ -174,10 +211,7 @@ const resetGuest = (): void => {
   listed = slots;
   booking = "created";
   viewer = "guest";
-  vi.stubGlobal("fetch", async (input: RequestInfo | URL): Promise<Response> => {
-    const response = await Promise.resolve(fetchCalendar(input));
-    return response;
-  });
+  vi.stubGlobal("fetch", fetchCalendar);
 };
 
 describe("public calendar", () => {
@@ -270,7 +304,12 @@ describe("the zone banner", () => {
   });
 });
 
-const bookFirstSlot = (time: RegExp): void => {
+const noteLabel = "О чём хотите поговорить?";
+// oxlint-disable-next-line eslint/no-magic-numbers -- one character over the 500-character Заметка limit
+const overlongNoteLength = 501;
+const overlongNote = "a".repeat(overlongNoteLength);
+
+const bookFirstSlot = (time: RegExp, note?: string): void => {
   fireEvent.click(screen.getByRole("button", { name: time }));
   fireEvent.change(screen.getByLabelText("Имя", { exact: false }), {
     target: { value: "Борис" },
@@ -278,10 +317,17 @@ const bookFirstSlot = (time: RegExp): void => {
   fireEvent.change(screen.getByLabelText("Email", { exact: false }), {
     target: { value: "boris@example.com" },
   });
+  if (note !== undefined) {
+    fireEvent.change(screen.getByLabelText(noteLabel, { exact: false }), {
+      target: { value: note },
+    });
+  }
   fireEvent.click(screen.getByRole("button", { name: "Забронировать" }));
 };
 
 const bookedOnTheDay = 2;
+// oxlint-disable-next-line eslint/no-magic-numbers -- the «Вы записаны» screen shows five known pieces
+const bookedScreenPieces = 5;
 
 describe("booking a Слот", () => {
   beforeEach(resetGuest);
@@ -293,11 +339,51 @@ describe("booking a Слот", () => {
     bookFirstSlot(/01:00–01:30/u);
 
     expect(await screen.findByRole("heading", { name: "Вы записаны" })).toBeInTheDocument();
-    expect(screen.getByText("Анна")).toBeInTheDocument();
-    expect(screen.getByText("2 ноября")).toBeInTheDocument();
-    expect(screen.getByText("Ваше время: 01:00–01:30")).toBeInTheDocument();
-    expect(screen.getByText("Время владельца (Europe/Moscow): 09:00–09:30")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^2 ноября, свободно 0$/u })).toBeInTheDocument();
+    expect([
+      screen.getByText("Анна"),
+      screen.getByText("2 ноября"),
+      screen.getByText("Ваше время: 01:00–01:30"),
+      screen.getByText("Время владельца (Europe/Moscow): 09:00–09:30"),
+      screen.getByRole("button", { name: /^2 ноября, свободно 0$/u }),
+    ]).toHaveLength(bookedScreenPieces);
+    expect(screen.queryByTestId("booking-note")).not.toBeInTheDocument();
+  });
+
+  it("shows the Заметка к Бронированию on «Вы записаны» with its line breaks", async () => {
+    renderAt("/u/anna");
+    fireEvent.click(await screen.findByRole("button", { name: /^2 ноября/u }));
+    bookFirstSlot(/09:00–09:30/u, "Вопрос про проект\nи контекст");
+
+    expect(await screen.findByRole("heading", { name: "Вы записаны" })).toBeInTheDocument();
+    const note = screen.getByTestId("booking-note");
+    expect(note.textContent).toBe("Вопрос про проект\nи контекст");
+    expect(note).toHaveStyle({ whiteSpace: "pre-wrap" });
+  });
+});
+
+describe("refusing a booking", () => {
+  beforeEach(resetGuest);
+
+  it("keeps the Заметка in the textarea when the Слот was taken", async () => {
+    booking = "taken";
+    renderAt("/u/anna");
+    fireEvent.click(await screen.findByRole("button", { name: /^2 ноября/u }));
+    bookFirstSlot(/09:00–09:30/u, "Не потеряй меня");
+
+    expect(await screen.findByText("Этот слот уже занят")).toBeInTheDocument();
+    expect(screen.getByLabelText(noteLabel, { exact: false })).toHaveValue("Не потеряй меня");
+  });
+
+  it("keeps the overlong Заметка and shows the length error when validation fails", async () => {
+    booking = "note";
+    renderAt("/u/anna");
+    fireEvent.click(await screen.findByRole("button", { name: /^2 ноября/u }));
+    bookFirstSlot(/09:00–09:30/u, overlongNote);
+
+    expect(
+      await screen.findByText("Заметка к Бронированию — не длиннее 500 символов"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(noteLabel, { exact: false })).toHaveValue(overlongNote);
   });
 
   it("says the Слот was taken and refreshes the day", async () => {

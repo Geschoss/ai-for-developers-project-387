@@ -14,6 +14,7 @@ interface BookCommand {
   eventTypeId: string;
   guestEmail: string;
   guestName: string;
+  note: string | null;
   now: Date;
   startAt: Date;
   /** Absent when the visitor does not own a Календарь. */
@@ -129,6 +130,7 @@ class Calendar {
       guestEmail: command.guestEmail,
       guestName: command.guestName,
       id: randomUUID(),
+      note: command.note,
       startAt: start.instant,
     });
     this.bookings.push(booking);

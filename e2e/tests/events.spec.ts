@@ -131,6 +131,7 @@ const expectListed = async (page: Page, start: Date): Promise<void> => {
   await expect(page.getByText(`Слот: ${stamp(start, ownerTimeZone)}`)).toBeVisible();
   await expect(page.getByText(`Слот: ${stamp(start, guestTimeZone)}`)).toHaveCount(0);
   await expect(page.getByText(/^Создано:/u)).toBeVisible();
+  await expect(page.getByTestId("booking-note")).toHaveCount(0);
   await expect(page.getByText("Предстоящих событий нет")).toHaveCount(0);
 };
 

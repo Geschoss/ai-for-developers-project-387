@@ -15,6 +15,8 @@ const raceEmails = ["a@example.com", "b@example.com", "c@example.com", "d@exampl
 const laterDayMs = 48 * 60 * 60 * 1000;
 // oxlint-disable-next-line eslint/no-magic-numbers -- the grid these tests book is 30 minutes
 const halfHourMinutes = 30;
+// oxlint-disable-next-line unicorn/no-null -- the API expresses an absent Заметка к Бронированию as null
+const absentNote = null;
 
 interface Slot {
   startAt: string;
@@ -198,6 +200,7 @@ describe("POST /api/calendars/:slug/bookings", () => {
 
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
+      note: absentNote,
       ownerName: "Анна",
       ownerTimeZone: "Europe/Moscow",
       startAt: slot.startAt,

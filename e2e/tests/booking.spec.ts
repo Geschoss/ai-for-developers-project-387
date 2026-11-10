@@ -1,3 +1,4 @@
+/* oxlint-disable eslint/max-lines -- the booking scenarios and their helpers share one Playwright file */
 import { type Browser, type BrowserContext, type Page, expect, test } from "@playwright/test";
 
 import { openHalfHourType } from "./event-type.js";
@@ -99,9 +100,26 @@ const readFirstStart = async (page: Page, slug: string, eventTypeId: string): Pr
   return new Date(firstSlot(slotsFrom(body)).startAt);
 };
 
-const fillGuest = async (page: Page, name: string, email: string): Promise<void> => {
-  await page.getByLabel("Имя").fill(name);
-  await page.getByLabel("Email").fill(email);
+const noteLabel = "О чём хотите поговорить?";
+
+interface Guest {
+  email: string;
+  name: string;
+}
+
+const fillGuest = async (page: Page, guest: Guest, note?: string): Promise<void> => {
+  await page.getByLabel("Имя").fill(guest.name);
+  await page.getByLabel("Email").fill(guest.email);
+  if (note !== undefined) {
+    await page.getByLabel(noteLabel).fill(note);
+  }
+};
+
+const expectNote = async (page: Page, note: string): Promise<void> => {
+  const shown = page.getByTestId("booking-note");
+  await expect(shown).toBeVisible();
+  await expect(shown).toHaveText(note);
+  await expect(shown).toHaveCSS("white-space", "pre-wrap");
 };
 
 const chooseSlot = async (page: Page, slug: string, start: Date): Promise<void> => {
@@ -164,8 +182,8 @@ const fillBoth = async (
   const loser = await guestB.newPage();
   await chooseSlot(winner, slot.slug, slot.start);
   await chooseSlot(loser, slot.slug, slot.start);
-  await fillGuest(winner, "Борис", "boris@example.com");
-  await fillGuest(loser, "Вера", "vera@example.com");
+  await fillGuest(winner, { email: "boris@example.com", name: "Борис" });
+  await fillGuest(loser, { email: "vera@example.com", name: "Вера" });
   await winner.getByRole("button", { name: "Забронировать" }).click();
   return { loser, winner };
 };
@@ -190,5 +208,106 @@ test("two guests cannot book the same Слот", async ({ browser, page }) => {
     await expectConflict(race.loser, race.start);
   } finally {
     await closeBoth(race.guestA, race.guestB);
+  }
+});
+
+interface RaceContexts {
+  guestA: BrowserContext;
+  guestB: BrowserContext;
+}
+
+interface RaceNotes {
+  loser: string;
+  winner: string;
+}
+
+interface RacePages {
+  loser: Page;
+  winner: Page;
+}
+
+const openOwnerSlot = async (page: Page, slug: string): Promise<Date> => {
+  await registerOwner(page, `${slug}@example.com`, slug);
+  const eventTypeId = await openHalfHourType(page);
+  return readFirstStart(page, slug, eventTypeId);
+};
+
+const bookWithNote = async (page: Page, slot: CalendarSlot, note: string): Promise<void> => {
+  await chooseSlot(page, slot.slug, slot.start);
+  await fillGuest(page, { email: "boris@example.com", name: "Борис" }, note);
+  await page.getByRole("button", { name: "Забронировать" }).click();
+  await expect(page.getByRole("heading", { name: "Вы записаны" })).toBeVisible();
+  await expectNote(page, note);
+};
+
+const expectOwnerNote = async (page: Page, note: string): Promise<void> => {
+  await page.reload();
+  await expect(page.getByText("boris@example.com")).toBeVisible();
+  await expectNote(page, note);
+};
+
+const expectOwnerHasNote = async (page: Page, notes: RaceNotes): Promise<void> => {
+  await expectOwnerNote(page, notes.winner);
+  await expect(page.getByText(notes.loser)).toHaveCount(0);
+};
+
+const openRacePages = async (contexts: RaceContexts, slot: CalendarSlot): Promise<RacePages> => {
+  const winner = await contexts.guestA.newPage();
+  const loser = await contexts.guestB.newPage();
+  await chooseSlot(winner, slot.slug, slot.start);
+  await chooseSlot(loser, slot.slug, slot.start);
+  return { loser, winner };
+};
+
+const fillRace = async (pages: RacePages, notes: RaceNotes): Promise<void> => {
+  await fillGuest(pages.winner, { email: "boris@example.com", name: "Борис" }, notes.winner);
+  await fillGuest(pages.loser, { email: "vera@example.com", name: "Вера" }, notes.loser);
+};
+
+const expectLosingNote = async (
+  pages: RacePages,
+  slot: CalendarSlot,
+  notes: RaceNotes,
+): Promise<void> => {
+  await pages.winner.getByRole("button", { name: "Забронировать" }).click();
+  await expect(pages.winner.getByRole("heading", { name: "Вы записаны" })).toBeVisible();
+  await expectNote(pages.winner, notes.winner);
+  await expectConflict(pages.loser, slot.start);
+  await expect(pages.loser.getByLabel(noteLabel)).toHaveValue(notes.loser);
+};
+
+// oxlint-disable-next-line playwright/expect-expect -- assertions live in the shared helpers
+test("a Заметка к Бронированию reaches the Владелец", async ({ browser, page }) => {
+  const slug = `note-${String(Date.now())}`;
+  const note = "Хочу обсудить проект.\nЕсть контекст.";
+  const start = await openOwnerSlot(page, slug);
+  const guest = await browser.newContext({ timezoneId: guestTimeZone });
+  try {
+    await bookWithNote(await guest.newPage(), { slug, start }, note);
+  } finally {
+    await guest.close();
+  }
+  await expectOwnerNote(page, note);
+});
+
+// oxlint-disable-next-line playwright/expect-expect -- assertions live in the shared helpers
+test("the losing Гость's Заметка is not stored", async ({ browser, page }) => {
+  const slug = `note-race-${String(Date.now())}`;
+  const notes = {
+    loser: "Заметка второго гостя",
+    winner: "Заметка первого гостя.\nС переносом.",
+  };
+  const contexts = {
+    guestA: await browser.newContext({ timezoneId: guestTimeZone }),
+    guestB: await browser.newContext({ timezoneId: guestTimeZone }),
+  };
+  try {
+    const slot = { slug, start: await openOwnerSlot(page, slug) };
+    const pages = await openRacePages(contexts, slot);
+    await fillRace(pages, notes);
+    await expectLosingNote(pages, slot, notes);
+    await expectOwnerHasNote(page, notes);
+  } finally {
+    await closeBoth(contexts.guestA, contexts.guestB);
   }
 });

@@ -6,6 +6,7 @@ import { useSession } from "../app/session";
 import { api } from "../shared/api";
 import { forget } from "../shared/forget";
 import { dayKey } from "./model/slot-time";
+import { hasNote } from "./utils";
 
 type Booking = components["schemas"]["Booking"];
 
@@ -62,6 +63,11 @@ const BookingCard = ({
     <Text c="dimmed" size="sm">
       {booking.guest.email}
     </Text>
+    {hasNote(booking.note) && (
+      <Text data-testid="booking-note" size="sm" style={{ whiteSpace: "pre-wrap" }}>
+        {booking.note}
+      </Text>
+    )}
     <Text size="sm">{booking.eventTypeName}</Text>
     <Text size="sm">{slotLine(booking.startAt, timeZone)}</Text>
     <Text size="sm">{createdLine(booking.createdAt, timeZone)}</Text>
