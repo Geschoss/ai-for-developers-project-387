@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Checks that a commit or a PR names its type (Conventional Commits) and its ticket. See Commits in AGENTS.md.
 # Usage: `commit-message.sh commit <message-file>` from the commit-msg hook (`mise run commit-msg`),
-# `commit-message.sh pr` from CI, with PR_TITLE and PR_BODY in the environment.
+# `commit-message.sh pr` by hand before a squash merge (CI does not run it), with PR_TITLE and PR_BODY in the environment.
 set -euo pipefail
 
 conventional='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style)(\([A-Za-z0-9./_-]+\))?!?: [^ ]'

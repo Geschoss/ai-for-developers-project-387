@@ -122,7 +122,8 @@ Refs: #7
   body starts with `Closes #<n>`, which puts the ticket into the commit on `main`.
 - release-please's own `chore(main): release …` commits and PR, and git's `Revert "…"` and `Merge …`, need no ticket.
 
-The commit-msg hook and the `pr` workflow (`scripts/commit-message.sh`) enforce this.
+The commit-msg hook (`scripts/commit-message.sh`) enforces this for commits. CI does not check the PR title and body: the
+person checks them in the merge box, because the squash commit takes them.
 
 Write the PR title and body by `docs/agents/pull-requests.md` and the `pr` skill. OpenCode in GitHub Actions loads that file
 through `opencode.json`.
