@@ -24,3 +24,6 @@ spec/.check/
 dist/
 e2e/test-results/
 e2e/playwright-report/
+
+# Scheduled audit: Lighthouse report and agent conclusion stay out of commits
+audit-out/
