@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "share": "disabled",
+  "permission": {
+    "edit": {
+      "*": "deny",
+      "audit-out/conclusion.md": "allow"
+    },
+    "webfetch": "deny",
+    "external_directory": {
+      "*": "deny",
+      "~/.config/gh/**": "allow"
+    },
+    "bash": {
+      "*": "deny",
+      "ls*": "allow",
+      "cat *": "allow",
+      "grep *": "allow",
+      "jq *": "allow",
+      "gh issue *": "allow",
+      "gh label list*": "allow",
+      "gh pr list*": "allow",
+      "gh pr view*": "allow",
+      "gh api repos/Geschoss/ai-for-developers-project-387/*": "allow"
+    }
+  }
+}
