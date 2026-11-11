@@ -18,7 +18,7 @@ const normalizeNote = (note: string | null | undefined): string | null => {
   if (trimmed.length === 0) {
     return absentNote;
   }
-  if (trimmed.length >= maximumNoteLength) {
+  if (trimmed.length > maximumNoteLength) {
     throw problem(400, "validation_failed", [
       {
         message: `Заметка к Бронированию не может быть длиннее ${String(maximumNoteLength)} символов`,
